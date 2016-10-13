@@ -75,7 +75,7 @@ bool verify_index(collection& col, t_idx& idx,std::string name )
                                     << " block size = " << block_content.size()
                                     << " encoding block_size = " << t_idx::block_size;
         }
-        auto eq = std::equal(block_content.begin(), block_content.end(), docids.begin() + block_start);
+        auto eq = std::equal(block_content.begin(), block_content.end(), freqs.begin() + block_start);
         if (!eq) {
             ferror = true;
             LOG(ERROR) << "["<<name<<"] " << "FREQ BLOCK " << i << " NOT EQUAL";

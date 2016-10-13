@@ -56,14 +56,14 @@ public:
     {
         LOG(INFO) << "Loading Zlib store into memory (" << type() << ")";
         // (2) load the block map
-        LOG(INFO) << "\tLoad block map";
+        LOG(INFO) << "\tLoad block maps";
         sdsl::load_from_file(m_blockmap_docs, col.file_map[KEY_BLOCKMAP_DOCS]);
         sdsl::load_from_file(m_blockmap_freqs, col.file_map[KEY_BLOCKMAP_FREQS]);
         {
-            LOG(INFO) << "\tDetermine size";
+            LOG(INFO) << "\tDetermine docs size";
             const sdsl::int_vector_mapper<8, std::ios_base::in> docs(col.file_map[KEY_DOCIDS]);
             docs_size = docs.size();
-            LOG(INFO) << "\tDetermine size";
+            LOG(INFO) << "\tDetermine freqs size";
             const sdsl::int_vector_mapper<8, std::ios_base::in> freqs(col.file_map[KEY_FREQS]);
             freqs_size = freqs.size();
         }
@@ -248,12 +248,16 @@ public:
             auto num_blocks = docids.size() / t_block_size;
             auto left = docids.size() % t_block_size;
             block_map_type bmap;
-            bmap.m_block_offsets.resize(num_blocks+left!=0);
+            if(left)
+                bmap.m_block_offsets.resize(num_blocks+1);
+            else
+                bmap.m_block_offsets.resize(num_blocks);
             
             const uint8_t* data_ptr = (const uint8_t*)docids.data();
             const size_t blocks_per_thread = (512 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
             
             size_t init_blocks = num_blocks;
+            size_t offset_idx = 0;
             while (num_blocks) {
                 std::vector<std::future<block_encodings> > fis;
                 for (size_t i = 0; i < num_threads; i++) {
@@ -267,15 +271,12 @@ public:
                         break;
                 }
                 // join the threads
-                size_t j=1;
-                size_t offset_idx = 0;
                 for (auto& fbe : fis) {
                     const auto& be = fbe.get();
                     size_t size_offset = encoded_stream.tellp();    
                     for (const auto& o : be.offsets) {
-                        bmap.m_block_offsets[offset_idx] = size_offset + o;
+                        bmap.m_block_offsets[offset_idx++] = size_offset + o;
                     }
-                    LOG(INFO) << "["<<name<<"] " << "\t writing block " << j++;
                     encoded_stream.append(be.data);
                 }
                 LOG(INFO) << "["<<name<<"] " << "\t encoded blocks: " << init_blocks - num_blocks << "/" << init_blocks;
@@ -318,12 +319,16 @@ public:
             auto num_blocks = freqs.size() / t_block_size;
             auto left = freqs.size() % t_block_size;
             block_map_type bmap;
-            bmap.m_block_offsets.resize(num_blocks+left!=0);
+            if(left)
+                bmap.m_block_offsets.resize(num_blocks+1);
+            else
+                bmap.m_block_offsets.resize(num_blocks);
             
             const uint8_t* data_ptr = (const uint8_t*)freqs.data();
             const size_t blocks_per_thread = (512 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
             
             size_t init_blocks = num_blocks;
+            size_t offset_idx = 0;
             while (num_blocks) {
                 std::vector<std::future<block_encodings> > fis;
                 for (size_t i = 0; i < num_threads; i++) {
@@ -337,15 +342,12 @@ public:
                         break;
                 }
                 // join the threads
-                size_t j=1;
-                size_t offset_idx = 0;
                 for (auto& fbe : fis) {
                     const auto& be = fbe.get();
                     size_t size_offset = encoded_stream.tellp();    
                     for (const auto& o : be.offsets) {
-                        bmap.m_block_offsets[offset_idx] = size_offset + o;
+                        bmap.m_block_offsets[offset_idx++] = size_offset + o;
                     }
-                    LOG(INFO) << "["<<name<<"] " << "\t writing block " << j++;
                     encoded_stream.append(be.data);
                 }
                 LOG(INFO) << "["<<name<<"] " << "\t encoded blocks: " << init_blocks - num_blocks << "/" << init_blocks;
