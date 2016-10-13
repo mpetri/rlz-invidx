@@ -173,7 +173,7 @@ int main(int argc, const char* argv[])
                 list_id++;
             }
         }
-        LOG(INFO) << "processed terms = " << list_id << std::endl;
+        LOG(INFO) << "processed terms = " << list_id;
     }
     LOG(INFO) << "writing freqs";
     {
@@ -201,10 +201,10 @@ int main(int argc, const char* argv[])
                 list_id++;
             }
         }
-        LOG(INFO) << "processed terms = " << list_id << std::endl;
+        LOG(INFO) << "processed terms = " << list_id;
     }
 
-    LOG(INFO) << "num postings = " << num_postings << std::endl;
+    LOG(INFO) << "num postings = " << num_postings;
     {
         std::ofstream statsfs(args.collection_dir + "/" + KEY_COL_STATS);
         statsfs << std::to_string(num_postings) << std::endl;
