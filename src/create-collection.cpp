@@ -9,14 +9,16 @@ INITIALIZE_EASYLOGGINGPP
 typedef struct cmdargs {
     std::string collection_dir;
     std::string input_prefix;
+    std::string encoding;
 } cmdargs_t;
 
 void print_usage(const char* program)
 {
-    fprintf(stdout, "%s -c <collection directory> \n", program);
+    fprintf(stdout, "%s -c <collection directory> -i <input prefix> -e <encoding>\n", program);
     fprintf(stdout, "where\n");
     fprintf(stdout, "  -c <collection directory>  : the directory the collection is stored.\n");
     fprintf(stdout, "  -i <input prefix>          : the d2si input prefix.\n");
+    fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32).\n");
 };
 
 cmdargs_t
@@ -26,13 +28,22 @@ parse_args(int argc, const char* argv[])
     int op;
     args.collection_dir = "";
     args.input_prefix = "";
-    while ((op = getopt(argc, (char* const*)argv, "c:t:w:n:i:")) != -1) {
+    args.encoding = "u32";
+    while ((op = getopt(argc, (char* const*)argv, "c:i:e:")) != -1) {
         switch (op) {
         case 'c':
             args.collection_dir = optarg;
             break;
         case 'i':
             args.input_prefix = optarg;
+            break;
+        case 'e':
+            args.encoding = optarg;
+            if(args.encoding != "u32" && args.encoding != "vbyte") {
+                std::cerr << "Inxid encoding command line parameter.\n";
+                print_usage(argv[0]);
+                exit(EXIT_FAILURE);
+            }
             break;
         }
     }
@@ -55,6 +66,55 @@ inline void write_uint32(sdsl::int_vector_buffer<8>& buf,uint32_t x) {
     buf.push_back(x>>16);
     buf.push_back(x>>8);
     buf.push_back(x&0xFF);
+}
+
+template<uint32_t i>
+uint8_t extract7bits(const uint32_t x) {
+    return static_cast<uint8_t>((x >> (7 * i)) & ((1U << 7) - 1));
+}
+
+template<uint32_t i>
+uint8_t extract7bitsmaskless(const uint32_t x) {
+    return static_cast<uint8_t>((x >> (7 * i)));
+}
+        
+inline void write_vbyte(sdsl::int_vector_buffer<8>& buf,uint32_t x) {
+    if (x < (1U << 7)) {
+        uint8_t b = static_cast<uint8_t>(x | (1U << 7));
+        buf.push_back(b);
+    } else if (x < (1U << 14)) {
+        uint8_t b = extract7bits<0> (x);
+        buf.push_back(b);
+        b = extract7bitsmaskless<1> (x) | (1U << 7);
+        buf.push_back(b);
+    } else if (x < (1U << 21)) {
+        uint8_t b = extract7bits<0> (x);
+        buf.push_back(b);
+        b = extract7bits<1> (x);
+        buf.push_back(b);
+        b = extract7bitsmaskless<2> (x) | (1U << 7);
+        buf.push_back(b);
+    } else if (x < (1U << 28)) {
+        uint8_t b = extract7bits<0> (x);
+        buf.push_back(b);
+        b = extract7bits<1> (x);
+        buf.push_back(b);
+        b = extract7bits<2> (x);
+        buf.push_back(b);
+        b = extract7bitsmaskless<3> (x) | (1U << 7);
+        buf.push_back(b);
+    } else {
+        uint8_t b = extract7bits<0> (x);
+        buf.push_back(b);
+        b = extract7bits<1> (x);
+        buf.push_back(b);
+        b = extract7bits<2> (x);
+        buf.push_back(b);
+        b = extract7bits<3> (x);
+        buf.push_back(b);
+        b = extract7bitsmaskless<4> (x) | (1U << 7);
+        buf.push_back(b);
+    }
 }
 
 int main(int argc, const char* argv[])
@@ -90,16 +150,30 @@ int main(int argc, const char* argv[])
         uint32_t ndocs_d = read_uint32(docfs);
         LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
         size_t list_id = 1;
-        while(!docfs.eof()) {
-            uint32_t list_len = read_uint32(docfs);
-            for(uint32_t i=0;i<list_len;i++) {
-                uint32_t docid = read_uint32(docfs);
-                write_uint32(docs_out,docid);
-                num_postings++;
+        if(args.encoding == "u32") {
+            LOG(INFO) << "encoding using u32";
+            while(!docfs.eof()) {
+                uint32_t list_len = read_uint32(docfs);
+                for(uint32_t i=0;i<list_len;i++) {
+                    uint32_t docid = read_uint32(docfs);
+                    write_uint32(docs_out,docid);
+                    num_postings++;
+                }
+                list_id++;
             }
-            list_id++;
+        } else {
+            LOG(INFO) << "encoding using vbyte";
+            while(!docfs.eof()) {
+                uint32_t list_len = read_uint32(docfs);
+                for(uint32_t i=0;i<list_len;i++) {
+                    uint32_t docid = read_uint32(docfs);
+                    write_vbyte(docs_out,docid);
+                    num_postings++;
+                }
+                list_id++;
+            }
         }
-        LOG(INFO) << << "processed terms = " << list_id << std::endl;
+        LOG(INFO) << "processed terms = " << list_id << std::endl;
     }
     LOG(INFO) << "writing freqs";
     {
@@ -107,18 +181,30 @@ int main(int argc, const char* argv[])
         std::ifstream freqsfs(input_freqs, std::ios::binary);
         
         size_t list_id = 1;
-        while(!freqsfs.eof()) {
-            uint32_t list_len = read_uint32(freqsfs);
-            for(uint32_t i=0;i<list_len;i++) {
-                uint32_t freq = read_uint32(freqsfs);
-                write_uint32(freqs_out,freq);
+        if(args.encoding == "u32") {
+            while(!freqsfs.eof()) {
+                uint32_t list_len = read_uint32(freqsfs);
+                for(uint32_t i=0;i<list_len;i++) {
+                    uint32_t freq = read_uint32(freqsfs);
+                    write_uint32(freqs_out,freq);
+                }
+                list_id++;
             }
-            list_id++;
+        } else {
+            LOG(INFO) << "encoding using vbyte";
+            while(!freqsfs.eof()) {
+                uint32_t list_len = read_uint32(freqsfs);
+                for(uint32_t i=0;i<list_len;i++) {
+                    uint32_t freq = read_uint32(freqsfs);
+                    write_vbyte(freqs_out,freq);
+                }
+                list_id++;
+            }
         }
-        LOG(INFO) << << "processed terms = " << list_id << std::endl;
+        LOG(INFO) << "processed terms = " << list_id << std::endl;
     }
 
-    LOG(INFO) << << "num postings = " << num_postings << std::endl;
+    LOG(INFO) << "num postings = " << num_postings << std::endl;
     {
         std::ofstream statsfs(args.collection_dir + "/" + KEY_COL_STATS);
         statsfs << std::to_string(num_postings) << std::endl;
