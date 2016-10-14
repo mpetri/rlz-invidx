@@ -17,6 +17,8 @@
 
 #include "easylogging++.h"
 
+#include <sdsl/int_vector_mapper.hpp>
+
 using hrclock = std::chrono::high_resolution_clock;
 
 namespace utils {
@@ -54,6 +56,13 @@ crc(const uint8_t* buf, size_t len)
     uint32_t crc_val = crc32(0L, Z_NULL, 0);
     crc_val = crc32(crc_val, buf, (uint32_t)len);
     return crc_val;
+}
+
+uint32_t
+crc(std::string file_name)
+{
+    sdsl::read_only_mapper<8> dat(file_name,true);
+    return crc((const uint8_t*)dat.data(),dat.size());
 }
 
 bool directory_exists(std::string dir)
@@ -155,11 +164,8 @@ void print_usage(const char* program)
     fprintf(stdout, "where\n");
     fprintf(stdout, "  -c <collection directory>  : the directory the collection is stored.\n");
     fprintf(stdout, "  -s <dict size in MB>       : size of the initial dictionary in MB.\n");
-    fprintf(stdout, "  -p <dict size in MB>       : size of the dictionary after pruning in MB.\n");
-    fprintf(stdout, "  -d <debug output>          : increase the amount of logs shown.\n");
     fprintf(stdout, "  -t <threads>               : number of threads to use during factorization.\n");
     fprintf(stdout, "  -f <force rebuild>         : force rebuild of structures.\n");
-    fprintf(stdout, "  -v <verify index>          : verify the factorization can be used to recover the text.\n");
 };
 
 cmdargs_t
@@ -169,11 +175,9 @@ parse_args(int argc, const char* argv[])
     int op;
     args.collection_dir = "";
     args.rebuild = false;
-    args.verify = false;
     args.threads = 1;
     args.dict_size_in_bytes = 0;
-    args.pruned_dict_size_in_bytes = 0;
-    while ((op = getopt(argc, (char* const*)argv, "c:fdvt:s:p:")) != -1) {
+    while ((op = getopt(argc, (char* const*)argv, "c:ft:s:")) != -1) {
         switch (op) {
         case 'c':
             args.collection_dir = optarg;
@@ -184,17 +188,8 @@ parse_args(int argc, const char* argv[])
         case 'f':
             args.rebuild = true;
             break;
-        case 'p':
-            args.pruned_dict_size_in_bytes = std::stoul(optarg) * (1024 * 1024);
-            break;
         case 't':
             args.threads = std::stoul(optarg);
-            break;
-        case 'd':
-            el::Loggers::setLoggingLevel(el::Level::Trace);
-            break;
-        case 'v':
-            args.verify = true;
             break;
         }
     }
@@ -203,12 +198,49 @@ parse_args(int argc, const char* argv[])
         print_usage(argv[0]);
         exit(EXIT_FAILURE);
     }
-    if (args.pruned_dict_size_in_bytes == 0) {
-        args.pruned_dict_size_in_bytes = args.dict_size_in_bytes;
+    return args;
+}
+
+
+void print_usage_lz(const char* program)
+{
+    fprintf(stdout, "%s <args>\n", program);
+    fprintf(stdout, "where\n");
+    fprintf(stdout, "  -c <collection directory>  : the directory the collection is stored.\n");
+    fprintf(stdout, "  -t <threads>               : number of threads to use during factorization.\n");
+    fprintf(stdout, "  -f <force rebuild>         : force rebuild of structures.\n");
+};
+
+cmdargs_t
+parse_args_lz(int argc, const char* argv[])
+{
+    cmdargs_t args;
+    int op;
+    args.collection_dir = "";
+    args.rebuild = false;
+    args.threads = 1;
+    while ((op = getopt(argc, (char* const*)argv, "c:t:f")) != -1) {
+        switch (op) {
+        case 'c':
+            args.collection_dir = optarg;
+            break;
+        case 'f':
+            args.rebuild = true;
+            break;
+        case 't':
+            args.threads = std::stoul(optarg);
+            break;
+        }
+    }
+    if (args.collection_dir == "") {
+        std::cerr << "Missing command line parameters.\n";
+        print_usage_lz(argv[0]);
+        exit(EXIT_FAILURE);
     }
 
     return args;
 }
+
 
 using namespace std::chrono;
 using watch = std::chrono::high_resolution_clock;

@@ -68,11 +68,12 @@ inline uint32_t read_uint32(std::ifstream& ifs) {
     return n;
 }
 
-inline void write_uint32(sdsl::int_vector_buffer<8>& buf,uint32_t x) {
-    buf.push_back(x>>24);
-    buf.push_back(x>>16);
-    buf.push_back(x>>8);
-    buf.push_back(x&0xFF);
+inline void write_uint32(std::ofstream& out,uint32_t x) {
+    out.write(reinterpret_cast<char*>(&x), sizeof x);
+}
+
+inline void write_uint8_t(std::ofstream& out,uint8_t x) {
+    out.write(reinterpret_cast<char*>(&x), sizeof x);
 }
 
 template<uint32_t i>
@@ -85,42 +86,42 @@ uint8_t extract7bitsmaskless(const uint32_t x) {
     return static_cast<uint8_t>((x >> (7 * i)));
 }
         
-inline void write_vbyte(sdsl::int_vector_buffer<8>& buf,uint32_t x) {
+inline void write_vbyte(std::ofstream& out,uint32_t x) {
     if (x < (1U << 7)) {
         uint8_t b = static_cast<uint8_t>(x | (1U << 7));
-        buf.push_back(b);
+        write_uint8_t(out,b);
     } else if (x < (1U << 14)) {
         uint8_t b = extract7bits<0> (x);
-        buf.push_back(b);
+        write_uint8_t(out,b);
         b = extract7bitsmaskless<1> (x) | (1U << 7);
-        buf.push_back(b);
+        write_uint8_t(out,b);
     } else if (x < (1U << 21)) {
         uint8_t b = extract7bits<0> (x);
-        buf.push_back(b);
+        write_uint8_t(out,b);
         b = extract7bits<1> (x);
-        buf.push_back(b);
+        write_uint8_t(out,b);
         b = extract7bitsmaskless<2> (x) | (1U << 7);
-        buf.push_back(b);
+        write_uint8_t(out,b);
     } else if (x < (1U << 28)) {
         uint8_t b = extract7bits<0> (x);
-        buf.push_back(b);
+        write_uint8_t(out,b);
         b = extract7bits<1> (x);
-        buf.push_back(b);
+        write_uint8_t(out,b);
         b = extract7bits<2> (x);
-        buf.push_back(b);
+        write_uint8_t(out,b);
         b = extract7bitsmaskless<3> (x) | (1U << 7);
-        buf.push_back(b);
+        write_uint8_t(out,b);
     } else {
         uint8_t b = extract7bits<0> (x);
-        buf.push_back(b);
+        write_uint8_t(out,b);
         b = extract7bits<1> (x);
-        buf.push_back(b);
+        write_uint8_t(out,b);
         b = extract7bits<2> (x);
-        buf.push_back(b);
+        write_uint8_t(out,b);
         b = extract7bits<3> (x);
-        buf.push_back(b);
+        write_uint8_t(out,b);
         b = extract7bitsmaskless<4> (x) | (1U << 7);
-        buf.push_back(b);
+        write_uint8_t(out,b);
     }
 }
 
@@ -143,8 +144,8 @@ int main(int argc, const char* argv[])
     
     utils::create_directory(args.collection_dir);
     
-    std::string output_docids = args.collection_dir + "/" + KEY_DOCIDS + KEY_SUFFIX;
-    std::string output_freqs = args.collection_dir + "/" + KEY_FREQS + KEY_SUFFIX;
+    std::string output_docids = args.collection_dir + "/" + DOCS_NAME;
+    std::string output_freqs = args.collection_dir + "/" + FREQS_NAME;
     
     uint64_t num_postings = 0;
     bool vbyte = false;
@@ -152,7 +153,7 @@ int main(int argc, const char* argv[])
     
     LOG(INFO) << "writing docids (vbyte=" << vbyte << ")";
     {
-        sdsl::int_vector_buffer<8> docs_out(output_docids,std::ios::out,128*1024*1024);
+        std::ofstream docs_out(output_docids,std::ios::binary);
         std::ifstream docfs(input_docids, std::ios::binary);
         
         read_uint32(docfs);
@@ -188,7 +189,7 @@ int main(int argc, const char* argv[])
     }
     LOG(INFO) << "writing freqs (vbyte=" << vbyte << ")";
     {
-        sdsl::int_vector_buffer<8> freqs_out(output_freqs,std::ios::out,128*1024*1024);
+        std::ofstream freqs_out(output_freqs,std::ios::binary);
         std::ifstream freqsfs(input_freqs, std::ios::binary);
         
         size_t list_id = 1;
@@ -207,7 +208,7 @@ int main(int argc, const char* argv[])
         LOG(INFO) << "freq postings = " << num_postings;
     }
     {
-        std::ofstream statsfs(args.collection_dir + "/" + KEY_COL_STATS);
+        std::ofstream statsfs(args.collection_dir + "/" + STATS_NAME);
         statsfs << std::to_string(num_postings) << std::endl;
     }
 

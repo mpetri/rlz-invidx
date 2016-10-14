@@ -99,11 +99,11 @@ add_library(brotli ${BROTLI_SRCS_ENC_LIB} ${BROTLI_SRCS_DEC_LIB})
 add_executable(rlzs-create.x src/rlzs-create.cpp)
 target_link_libraries(rlzs-create.x sdsl pthread divsufsort divsufsort64 zlib lz4 bzip2 brotli lzma zstd)
 
-add_executable(lzs-create.x src/lzs-create.cpp)
-target_link_libraries(lzs-create.x sdsl pthread divsufsort divsufsort64 zlib lz4 bzip2 brotli lzma zstd)
+add_executable(lzsi-create.x src/lzsi-create.cpp)
+target_link_libraries(lzsi-create.x sdsl pthread divsufsort divsufsort64 zlib lz4 bzip2 brotli lzma zstd)
 
-add_executable(create-collection.x src/create-collection.cpp)
-target_link_libraries(create-collection.x sdsl pthread zlib lz4 bzip2 brotli lzma zstd)
+add_executable(create-invidx-collection.x src/create-invidx-collection.cpp)
+target_link_libraries(create-invidx-collection.x sdsl pthread zlib lz4 bzip2 brotli lzma zstd)
 
 add_executable(unit-tests.x src/unit-tests.cpp)
 target_link_libraries(unit-tests.x sdsl pthread zlib gtest_main lz4 bzip2 brotli lzma zstd)

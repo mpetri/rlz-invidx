@@ -8,7 +8,7 @@
 
 // #include "rlz_store_static.hpp"
 // #include "rlz_store_static_builder.hpp"
-#include "lz_store_static.hpp"
+#include "lz_store.hpp"
 
 #include <sdsl/bit_vectors.hpp>
 

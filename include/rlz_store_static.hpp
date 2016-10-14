@@ -16,7 +16,6 @@
 using namespace std::chrono;
 
 template <class t_dictionary_creation_strategy,
-    class t_dictionary_pruning_strategy,
     class t_dictionary_index,
     uint32_t t_factorization_block_size,
     bool t_search_local_block_context,
@@ -26,7 +25,6 @@ template <class t_dictionary_creation_strategy,
 class rlz_store_static {
 public:
     using dictionary_creation_strategy = t_dictionary_creation_strategy;
-    using dictionary_pruning_strategy = t_dictionary_pruning_strategy;
     using dictionary_index = t_dictionary_index;
     using factor_selection_strategy = t_factor_selection_strategy;
     using factor_coder_type = t_factor_coder;
@@ -61,7 +59,6 @@ public:
     {
         auto dict_size_mb = dict.size() / (1024 * 1024);
         return dictionary_creation_strategy::type() + "-" + std::to_string(dict_size_mb) + "_"
-            + dictionary_pruning_strategy::type() + "_"
             + factor_selection_strategy::type() + "_"
             + factor_coder_type::type();
     }
@@ -75,6 +72,7 @@ public:
     {
         LOG(INFO) << "Loading RLZ store into memory";
         m_factor_file = col.file_map[KEY_FACTORIZED_TEXT];
+        
         // (2) load the block map
         LOG(INFO) << "\tLoad block map";
         sdsl::load_from_file(m_blockmap, col.file_map[KEY_BLOCKMAP]);

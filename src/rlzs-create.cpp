@@ -25,33 +25,31 @@ int main(int argc, const char* argv[])
     const uint32_t factorization_blocksize = 64 * 1024;
     {
         auto rlz_store = rlz_store_static<dict_uniform_sample_budget<default_dict_sample_block_size>,
-                             dict_prune_none,
                              dict_index_sa,
                              factorization_blocksize,
                              false,
                              factor_select_first,
                              factor_coder_blocked<3, coder::zlib<9>, coder::zlib<9>, coder::zlib<9> >,
-                             block_map_uncompressed>::builder{}
+                             block_map_uncompressed<true>>::builder{}
                              .set_rebuild(args.rebuild)
                              .set_threads(args.threads)
                              .set_dict_size(8 * 1024 * 1024)
-                             .build_or_load(col);
+                             .build_or_load(col,"RLZ-ZLIB");
 
         verify_index(col, rlz_store);
     }
     {
         auto rlz_store = rlz_store_static<dict_uniform_sample_budget<default_dict_sample_block_size>,
-                             dict_prune_none,
                              dict_index_sa,
                              factorization_blocksize,
                              false,
                              factor_select_first,
                              factor_coder_blocked<3, coder::zstd<9>, coder::zstd<9>, coder::zstd<9> >,
-                             block_map_uncompressed>::builder{}
+                             block_map_uncompressed<true>>::builder{}
                              .set_rebuild(args.rebuild)
                              .set_threads(args.threads)
-                             .set_dict_size(8 * 1024 * 1024)
-                             .build_or_load(col);
+                             .set_dict_size(args.dict)
+                             .build_or_load(col,"RLZ-ZSTD");
 
         verify_index(col, rlz_store);
     }
