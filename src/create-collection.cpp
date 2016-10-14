@@ -33,7 +33,7 @@ parse_args(int argc, const char* argv[])
     args.input_prefix = "";
     args.encoding = "u32";
     args.blocking = false;
-    while ((op = getopt(argc, (char* const*)argv, "c:i:e:b:")) != -1) {
+    while ((op = getopt(argc, (char* const*)argv, "c:i:e:b")) != -1) {
         switch (op) {
         case 'c':
             args.collection_dir = optarg;
