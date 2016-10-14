@@ -63,7 +63,7 @@ struct factorizor {
         be.id = id;
         t_coder coder;
         block_factor_data bfd(block_size);
-        size_t block_per_100MiB = 100*1024*1024 / block_size;
+        size_t block_per_20MiB = 20*1024*1024 / block_size;
         size_t total_factors = 0;
         auto start = hrclock::now();
         {
@@ -75,7 +75,7 @@ struct factorizor {
                 total_factors += num_factors;
                 data_ptr += block_size;
 
-                if( i+1 % block_per_100MiB == 0) {
+                if( (i+1) % block_per_20MiB == 0) {
                     auto now = hrclock::now();
                     auto enc_seconds = duration_cast<milliseconds>(now - start).count() / 1000.0;
                     size_t bytes_encoded = (i+1) * block_size;
@@ -84,7 +84,7 @@ struct factorizor {
                     double avg_factor_len = double(bytes_encoded) / double(total_factors);
                     double speed = mb_encoded / enc_seconds;
                     double cr = double(bytes_written) / double(bytes_encoded) * 100.0;
-                    LOG(INFO) << "[" << id << "] " << "AVG " << avg_factor_len << " " << " SPEED = " << speed << "MiB/s" << " CR = " << cr << "%";
+                    LOG(INFO) << "[" << id << "] " << "AVG " << avg_factor_len << " " << " SPEED = " << speed << "MiB/s" << " CR = " << cr << "% (" << i+1 << "/" << blocks_to_encode << ")";
                 }
             }
         }
@@ -106,12 +106,15 @@ struct factorizor {
         auto left = input.size() % t_block_size;
 
         block_map_uncompressed<true> bmap;
-        if(left)
+        if(left) {
             bmap.m_block_offsets.resize(num_blocks+1);
-        else
+            bmap.m_block_factors.resize(num_blocks+1);
+        } else {
             bmap.m_block_offsets.resize(num_blocks);
-            
-        const size_t blocks_per_thread = (512 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
+            bmap.m_block_factors.resize(num_blocks);
+        }
+
+        const size_t blocks_per_thread = (256 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
         
         auto encoded_data = sdsl::write_out_buffer<1>::create(rlz_output_file);
         bit_ostream<sdsl::int_vector_mapper<1> > encoded_stream(encoded_data);

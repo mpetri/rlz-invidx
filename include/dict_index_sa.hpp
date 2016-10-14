@@ -158,12 +158,8 @@ struct dict_index_sa {
 
     dict_index_sa(sdsl::int_vector<8>& dict) : text(dict)
     {
-        LOG(INFO) << "\tconstruct textionary index";
-        LOG(INFO) << "\tconstruct suffix array";
         sa.width(sdsl::bits::hi(text.size()) + 1);
         sdsl::algorithm::calculate_sa((const uint8_t*)text.data(), text.size(), sa);
-
-        LOG(INFO) << "\tCompute a 3-gram cache";
         {
             size_t num_kgrams = 256 * 256 * 256;
             sdsl::int_vector<> counts(num_kgrams);
