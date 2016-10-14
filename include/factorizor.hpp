@@ -84,7 +84,7 @@ struct factorizor {
                     double avg_factor_len = double(bytes_encoded) / double(total_factors);
                     double speed = mb_encoded / enc_seconds;
                     double cr = double(bytes_written) / double(bytes_encoded) * 100.0;
-                    LOG(INFO) << "[" << id << "] " << "AVG " << avg_factor_len << " " << " SPEED = " << speed << "MiB/s" << " CR = " << cr << "% (" << i+1 << "/" << blocks_to_encode << ")";
+                    LOG(INFO) << "  [" << id << "] " << "AVG " << avg_factor_len << " " << " SPEED = " << speed << "MiB/s" << " CR = " << cr << "% (" << i+1 << "/" << blocks_to_encode << ")";
                 }
             }
         }
@@ -121,6 +121,8 @@ struct factorizor {
         size_t init_blocks = num_blocks;
         size_t offset_idx = 0;
         const uint8_t* data_ptr = (const uint8_t*) input.data();
+        auto start = hrclock::now();
+        size_t total_num_factors = 0;
         while (num_blocks) {
             std::vector<std::future<block_encodings> > fis;
             for (size_t i = 0; i < num_threads; i++) {
@@ -142,13 +144,14 @@ struct factorizor {
                     size_t f = be.factors[i];
                     bmap.m_block_offsets[offset_idx] = size_offset + o;
                     bmap.m_block_factors[offset_idx] = f;
+                    total_num_factors += f;
                     offset_idx++;
                 }
                 encoded_stream.append(be.data);
             }
-            LOG(INFO) << "["<<name<<"] " << "\t encoded blocks: " << init_blocks - num_blocks << "/" << init_blocks;
+            LOG(INFO) << "["<<name<<"] " << "encoded blocks: " << init_blocks - num_blocks << "/" << init_blocks;
         }
-        
+
         if (left) { // last block
             block_factor_data bfd(left);
             t_coder coder;
@@ -157,6 +160,18 @@ struct factorizor {
             bmap.m_block_factors[bmap.m_block_offsets.size()-1] = num_factors;
         }
         
+        // output stats
+        auto stop = hrclock::now();
+        auto enc_seconds = duration_cast<milliseconds>(stop - start).count() / 1000.0;
+        size_t bytes_encoded = input.size();
+        size_t bytes_written = encoded_stream.tellp() / 8;
+        auto mb_encoded = bytes_encoded / (1024 * 1024.0);
+        double avg_factor_len = double(bytes_encoded) / double(total_num_factors);
+        double speed = mb_encoded / enc_seconds;
+        double cr = double(bytes_written) / double(bytes_encoded) * 100.0;
+        LOG(INFO) << "["<<name<<"] " << "STATS: AVG " << avg_factor_len << " " << " SPEED = " << speed << "MiB/s" << " CR = " << cr;
+
+
         LOG(INFO) << "["<<name<<"] "  "store blockmap";
         bmap.bit_compress();
         auto bmap_output_file = col.file_name(hash,block_map_uncompressed<true>::type());
