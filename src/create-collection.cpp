@@ -151,29 +151,40 @@ int main(int argc, const char* argv[])
         LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
         size_t list_id = 1;
         if(args.encoding == "u32") {
-            LOG(INFO) << "encoding using u32";
+            LOG(INFO) << "encoding docid differences using u32";
             while(!docfs.eof()) {
                 uint32_t list_len = read_uint32(docfs);
-                for(uint32_t i=0;i<list_len;i++) {
-                    uint32_t docid = read_uint32(docfs);
-                    write_uint32(docs_out,docid);
+                uint32_t prev = read_uint32(docfs);
+                write_uint32(docs_out,prev);
+                num_postings++;
+                for(uint32_t i=1;i<list_len;i++) {
+                    uint32_t cur = read_uint32(docfs);
+                    uint32_t gap = cur-prev;
+                    prev = cur;
+                    write_uint32(docs_out,gap);
                     num_postings++;
                 }
                 list_id++;
             }
         } else {
-            LOG(INFO) << "encoding using vbyte";
+            LOG(INFO) << "encoding docid differences using vbyte";
             while(!docfs.eof()) {
                 uint32_t list_len = read_uint32(docfs);
-                for(uint32_t i=0;i<list_len;i++) {
-                    uint32_t docid = read_uint32(docfs);
-                    write_vbyte(docs_out,docid);
+                uint32_t prev = read_uint32(docfs);
+                write_vbyte(docs_out,prev);
+                num_postings++;
+                for(uint32_t i=1;i<list_len;i++) {
+                    uint32_t cur = read_uint32(docfs);
+                    uint32_t gap = cur-prev;
+                    prev = cur;
+                    write_vbyte(docs_out,gap);
                     num_postings++;
                 }
                 list_id++;
             }
         }
         LOG(INFO) << "processed terms = " << list_id;
+        LOG(INFO) << "docid postings = " << num_postings;
     }
     LOG(INFO) << "writing freqs";
     {
@@ -181,30 +192,33 @@ int main(int argc, const char* argv[])
         std::ifstream freqsfs(input_freqs, std::ios::binary);
         
         size_t list_id = 1;
+        num_postings = 0;
         if(args.encoding == "u32") {
+            LOG(INFO) << "encoding freqs using u32";
             while(!freqsfs.eof()) {
                 uint32_t list_len = read_uint32(freqsfs);
                 for(uint32_t i=0;i<list_len;i++) {
                     uint32_t freq = read_uint32(freqsfs);
                     write_uint32(freqs_out,freq);
+                    num_postings++;
                 }
                 list_id++;
             }
         } else {
-            LOG(INFO) << "encoding using vbyte";
+            LOG(INFO) << "encoding freqs using vbyte";
             while(!freqsfs.eof()) {
                 uint32_t list_len = read_uint32(freqsfs);
                 for(uint32_t i=0;i<list_len;i++) {
                     uint32_t freq = read_uint32(freqsfs);
                     write_vbyte(freqs_out,freq);
+                    num_postings++;
                 }
                 list_id++;
             }
         }
         LOG(INFO) << "processed terms = " << list_id;
+        LOG(INFO) << "freq postings = " << num_postings;
     }
-
-    LOG(INFO) << "num postings = " << num_postings;
     {
         std::ofstream statsfs(args.collection_dir + "/" + KEY_COL_STATS);
         statsfs << std::to_string(num_postings) << std::endl;
