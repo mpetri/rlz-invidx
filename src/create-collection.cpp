@@ -5,6 +5,7 @@
 #include "logging.hpp"
 INITIALIZE_EASYLOGGINGPP
 
+const uint32_t BLOCK_SIZE = 128;
 
 typedef struct cmdargs {
     std::string collection_dir;
