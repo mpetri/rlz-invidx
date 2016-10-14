@@ -30,14 +30,13 @@ private:
     block_map_type m_blockmap;
 public:
     enum { block_size = t_factorization_block_size };
-    enum { search_local_block_context = t_search_local_block_context };
     uint64_t encoding_block_size = block_size;
     block_map_type& block_map = m_blockmap;
     sdsl::int_vector<8>& dict = m_dict;
     factor_coder_type m_factor_coder;
     sdsl::int_vector_mapper<1, std::ios_base::in>& factor_text = m_factored_data;
     uint64_t data_size;
-    std::string m_factor_file;
+    std::string name;
 public:
     class builder;
 
@@ -51,28 +50,28 @@ public:
     rlz_store() = delete;
     rlz_store(rlz_store&&) = default;
     rlz_store& operator=(rlz_store&&) = default;
-    rlz_store(collection& col)
-        : m_factored_data(col.file_map[KEY_FACTORIZED_TEXT])
+    rlz_store(collection& col,std::string input_file,uint32_t dict_hash,uint32_t input_hash,std::string n)
+        : m_factored_data( col.file_name(dict_hash xor input_hash,factorization_strategy::type()) )
         , m_factor_stream(m_factored_data) // (1) mmap factored text
+        , name(n)
     {
-        LOG(INFO) << "Loading RLZ store into memory";
-        m_factor_file = col.file_map[KEY_FACTORIZED_TEXT];
+        LOG(INFO) << "["<<name<<"] " << "loading RLZ store into memory";
+        uint32_t hash = dict_hash xor input_hash;
         
         // (2) load the block map
-        LOG(INFO) << "\tLoad block map";
-        sdsl::load_from_file(m_blockmap, col.file_map[KEY_BLOCKMAP]);
+        LOG(INFO) << "["<<name<<"] " << "\tload block map";
+        sdsl::load_from_file( m_blockmap, col.file_name(hash,block_map_uncompressed<true>::type()) );
 
         // (3) load dictionary from disk
-        LOG(INFO) << "\tLoad dictionary";
-        m_dict_hash = col.param_map[PARAM_DICT_HASH];
-        m_dict_file = col.file_map[KEY_DICT];
-        sdsl::load_from_file(m_dict, col.file_map[KEY_DICT]);
+        LOG(INFO) << "["<<name<<"] " << "\tload dictionary";
+        auto dict_file_name = col.file_name(input_hash,dictionary_creation_strategy::type());
+        sdsl::load_from_file(m_dict,dict_file_name);
         {
-            LOG(INFO) << "\tDetermine text size";
-            const sdsl::int_vector_mapper<8, std::ios_base::in> text(col.file_map[KEY_TEXT]);
+            LOG(INFO) << "["<<name<<"] " << "\tdetermine text size";
+            const sdsl::int_vector_mapper<8, std::ios_base::in> text(input_file,true);
             data_size = text.size();
         }
-        LOG(INFO) << "RLZ store ready";
+        LOG(INFO) << "["<<name<<"] " << "RLZ store ready";
     }
 
     auto factors_begin() const -> factor_iterator<decltype(*this)>
@@ -105,12 +104,12 @@ public:
         return m_dict.size() + (m_factored_data.size() >> 3) + m_blockmap.size_in_bytes();
     }
 
-    inline coder_size_info decode_factors(size_t offset,
+    inline void decode_factors(size_t offset,
         block_factor_data& bfd,
         size_t num_factors) const
     {
         m_factor_stream.seek(offset);
-        return m_factor_coder.decode_block(m_factor_stream, bfd, num_factors);
+        m_factor_coder.decode_block(m_factor_stream, bfd, num_factors);
     }
 
     inline uint64_t decode_block(uint64_t block_id, std::vector<uint8_t>& text, block_factor_data& bfd) const
@@ -135,20 +134,8 @@ public:
             else {
                 /* copy from dict */
                 const auto& factor_offset = bfd.offsets[offsets_used];
-                if (t_search_local_block_context) {
-                    if (factor_offset < block_size) { // local factor instead of global factor
-                        auto beg = text.begin() + factor_offset;
-                        std::copy(beg, beg + factor_len, out_itr);
-                    }
-                    else {
-                        auto begin = m_dict.begin() + factor_offset - block_size;
-                        std::copy(begin, begin + factor_len, out_itr);
-                    }
-                }
-                else {
-                    auto begin = m_dict.begin() + factor_offset;
-                    std::copy(begin, begin + factor_len, out_itr);
-                }
+                auto begin = m_dict.begin() + factor_offset;
+                std::copy(begin, begin + factor_len, out_itr);
                 out_itr += factor_len;
                 offsets_used++;
             }
@@ -167,20 +154,19 @@ public:
         return block_content;
     }
 
-    std::pair<coder_size_info, std::vector<factor_data> >
+    std::vector<factor_data>
     block_factors(const size_t block_id) const
     {
         auto num_factors = m_blockmap.block_factors(block_id);
         factor_iterator<decltype(*this)> fitr(*this, block_id, 0);
         std::vector<factor_data> fdata(num_factors);
-        coder_size_info csi;
         for (size_t i = 0; i < num_factors; i++) {
             factor_data fd = *fitr;
             fdata[i] = fd;
             ++fitr;
-            if (i == 0)
-                csi = fitr.cur_block_size_info;
         }
-        return make_pair(csi, fdata);
+        return fdata;
     }
 };
+
+#include "rlz_store_builder.hpp"

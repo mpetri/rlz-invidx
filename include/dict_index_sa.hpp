@@ -19,11 +19,8 @@ struct factor_itr_sa {
     uint64_t sp;
     uint64_t ep;
     uint64_t len;
-    uint64_t local_offset;
     uint8_t sym;
     bool done;
-    bool local;
-    const bool t_local_search = false;
     
     factor_itr_sa(const sdsl::int_vector<>& _sa, const sdsl::int_vector<8>& _text, const sdsl::int_vector<>& _cache, t_itr begin, t_itr _end)
         : sa(_sa)
@@ -38,10 +35,8 @@ struct factor_itr_sa {
         , sp(0)
         , ep(_sa.size() - 1)
         , len(0)
-        , local_offset(0)
         , sym(0)
         , done(false)
-        , local(false)
     {
         find_next_factor();
     }
@@ -49,70 +44,6 @@ struct factor_itr_sa {
     {
         find_next_factor();
         return *this;
-    }
-
-    inline void find_longer_local_factor()
-    {
-        local = false;
-        // (1) local search enabled?
-        if (!t_local_search)
-            return;
-        // (2) is the global factor already quite long? are we in the first part of the block?
-        // if( std::distance(start,itr) > 1024 && len >= 20) return;
-
-        // // (3) search for a better factor locally
-        // {
-        //     utils::rlz_timer<std::chrono::nanoseconds> fbt("search q-gram");
-        //     uint32_t qgram = 0; uint8_t* qg8 = (uint8_t*) &qgram;
-        //     qg8[0] = *factor_start; qg8[1] = *(factor_start+1); qg8[2] = *(factor_start+2);  qg8[3] = *(factor_start+3);
-        //     auto qitr = qgrams.find(qgram);
-        //     if( qitr != qgrams.end()) { // found the qgram at the start of the current factor?
-        //         const auto& qpos = qitr->second;
-        //         bool found = false;
-        //         size_t max_match_len = 0;
-        //         local_offset = 0;
-        //         for(const auto& p : qpos) { // check all pos of qgram for better matches
-        //             auto tmp = start + p;
-        //             auto pitr = factor_start;
-        //             size_t match_len = 0;
-        //             while(tmp != factor_start && pitr != end && *tmp == *pitr) {
-        //                 match_len++;
-        //                 ++tmp;
-        //                 ++pitr;
-        //             }
-        //             if(match_len > max_match_len) {
-        //                 local_offset = p;
-        //                 max_match_len = match_len;
-        //                 found = true;
-        //             }
-        //         }
-        //         if(found && max_match_len > len) {
-        //             local = true;
-        //             len = max_match_len;
-        //             itr = factor_start + len;
-        //         }
-        //     }
-        // }
-        // // (4) update the local q-gram index
-        // {
-        //     utils::rlz_timer<std::chrono::nanoseconds> fbt("update q-gram");
-        //     uint32_t qgram = 0; uint8_t* qg8 = (uint8_t*) &qgram;
-        //     auto tmp = factor_start;
-        //     size_t syms_seen = 0;
-        //     while(tmp != itr) {
-        //         qg8[syms_seen] = *tmp;
-        //         syms_seen++;
-        //         if(syms_seen == 4) {
-        //             auto offset = std::distance(start,tmp) - 3;
-        //             qgrams[qgram].push_back(offset);
-        //             qg8[0] = qg8[1];
-        //             qg8[1] = qg8[2];
-        //             qg8[2] = qg8[3];
-        //             syms_seen = 3;
-        //         }
-        //         ++tmp;
-        //     }
-        // }
     }
 
     bool refine_bounds(uint64_t& lb, uint64_t& rb, uint8_t pat_sym, size_t offset)
@@ -123,8 +54,8 @@ struct factor_itr_sa {
         while (count > 0) {
             auto step = count / 2;
             auto mid = left + step;
-            uint8_t dict_sym = *(text_start + *mid + offset);
-            if (dict_sym < pat_sym) {
+            uint8_t text_sym = *(text_start + *mid + offset);
+            if (text_sym < pat_sym) {
                 count -= step + 1;
                 left = ++mid;
             }
@@ -139,8 +70,8 @@ struct factor_itr_sa {
         while (count > 0) {
             auto step = count / 2;
             auto mid = left + step;
-            uint8_t dict_sym = *(text_start + *mid + offset);
-            if (dict_sym <= pat_sym) {
+            uint8_t text_sym = *(text_start + *mid + offset);
+            if (text_sym <= pat_sym) {
                 count -= step + 1;
                 left = ++mid;
             }
@@ -149,8 +80,8 @@ struct factor_itr_sa {
             }
         }
         auto ep = left;
-        uint8_t dict_sym = *(text_start + *left + offset);
-        if (dict_sym != pat_sym)
+        uint8_t text_sym = *(text_start + *left + offset);
+        if (text_sym != pat_sym)
             ep--;
 
         if (sp <= ep) {
@@ -225,9 +156,9 @@ struct dict_index_sa {
         return "dict_index_sa-" + sdsl::util::class_to_hash(*this);
     }
 
-    dict_index_sa(sdsl::int_vector<8>& dict)
+    dict_index_sa(sdsl::int_vector<8>& dict) : text(dict)
     {
-        LOG(INFO) << "\tconstruct dictionary index";
+        LOG(INFO) << "\tconstruct textionary index";
         LOG(INFO) << "\tconstruct suffix array";
         sa.width(sdsl::bits::hi(text.size()) + 1);
         sdsl::algorithm::calculate_sa((const uint8_t*)text.data(), text.size(), sa);

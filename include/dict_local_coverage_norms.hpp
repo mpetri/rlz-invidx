@@ -28,8 +28,7 @@ public:
     }
 
 public:
-    static sdsl::int_vector<8>
-    dictionary_creation_strategy::create(std::string input_file,size_t dict_size_bytes);
+    static sdsl::int_vector<8> create(std::string input_file,size_t dict_size_bytes,std::string name)
     {
         uint32_t budget_bytes = dict_size_bytes;
         uint32_t budget_mb = dict_size_bytes / (1024 * 1024);
@@ -37,8 +36,8 @@ public:
         // check if we store it already and load it
         auto down_size = 512;
         auto start_total = hrclock::now();
-        LOG(INFO) << "\tcreate dictionary with budget " << budget_mb << " MiB";
-        LOG(INFO) << "\tblock size = " << t_block_size;
+        LOG(INFO) << "["<<name<<"] " << "\tcreate dictionary with budget " << budget_mb << " MiB";
+        LOG(INFO) << "["<<name<<"] " << "\tblock size = " << t_block_size;
 
         sdsl::read_only_mapper<8> input(input_file,true);
         auto n = input.size();
@@ -58,16 +57,17 @@ public:
         size_t sample_step_adjusted = sample_step / thres / t_block_size * t_block_size; //make a tempate para later
         size_t num_samples_adjusted = n / sample_step_adjusted; //may contain more samples
 
-        LOG(INFO) << "\tdictionary samples to be picked = " << num_samples;
-        LOG(INFO) << "\tinput epoch size = " << sample_step;
-        LOG(INFO) << "\tadjusted epoch size = " << sample_step_adjusted;
-        LOG(INFO) << "\tadjusted dictionary samples in the text = " << num_samples_adjusted;
+        LOG(INFO) << "["<<name<<"] " << "\tdictionary samples to be picked = " << num_samples;
+        LOG(INFO) << "["<<name<<"] " << "\tinput epoch size = " << sample_step;
+        LOG(INFO) << "["<<name<<"] " << "\tadjusted epoch size = " << sample_step_adjusted;
+        LOG(INFO) << "["<<name<<"] " << "\tadjusted dictionary samples in the text = " << num_samples_adjusted;
 
         uint64_t rs_size = input.size() / down_size;
         std::vector<uint64_t> rs; //filter out frequency less than 64
+        uint64_t seed = 4711;
         std::mt19937 gen(seed);
         auto start = hrclock::now();
-        LOG(INFO) << "\tBuilding Reservoir sample with downsize: " << down_size;
+        LOG(INFO) << "["<<name<<"] " << "\tBuilding Reservoir sample with downsize: " << down_size;
         std::uniform_real_distribution<double> dis(0.0f, 1.0f);
 
         double w = std::exp(std::log(dis(gen)) / rs_size);
@@ -94,13 +94,13 @@ public:
             ptr += (size_t) (s+1);
         }
         auto stop = hrclock::now();
-        LOG(INFO) << "\treservoir sampling time = " 
+        LOG(INFO) << "["<<name<<"] " << "\treservoir sampling time = " 
         << duration_cast<milliseconds>(stop - start).count() / 1000.0f << " sec";
 
-        LOG(INFO) << "\treservoir sample blocks = " << rs.size();
-        LOG(INFO) << "\treservoir sample size = " << rs.size() * 8 / (1024 * 1024) << " MiB";
+        LOG(INFO) << "["<<name<<"] " << "\treservoir sample blocks = " << rs.size();
+        LOG(INFO) << "["<<name<<"] " << "\treservoir sample size = " << rs.size() * 8 / (1024 * 1024) << " MiB";
         //build exact counts of sampled elements
-        LOG(INFO) << "\tcalculating exact frequencies of small rolling blocks...";
+        LOG(INFO) << "["<<name<<"] " << "\tcalculating exact frequencies of small rolling blocks...";
         std::unordered_map<uint64_t, uint32_t> mers_counts;
         mers_counts.max_load_factor(0.1);
         for (uint64_t s : rs) {
@@ -108,10 +108,10 @@ public:
         }
         rs.clear(); //might be able to do it in place!!!!
 
-        LOG(INFO) << "\tuseful kept small blocks no. = " << mers_counts.size();
+        LOG(INFO) << "["<<name<<"] " << "\tuseful kept small blocks no. = " << mers_counts.size();
 
-        LOG(INFO) << "\tfirst pass: getting random steps...";
-        auto start = hrclock::now();
+        LOG(INFO) << "["<<name<<"] " << "\tfirst pass: getting random steps...";
+        start = hrclock::now();
 
         std::vector<uint32_t> step_indices;
         //try ordered max cov from front to back, proven to be good for small datasets
@@ -122,8 +122,8 @@ public:
         if (t_method == RAND)
             std::shuffle(step_indices.begin(), step_indices.end(),gen);
 
-        auto stop = hrclock::now();
-        LOG(INFO) << "\t1st pass runtime = " << duration_cast<milliseconds>(stop - start).count() / 1000.0f << " sec";
+        stop = hrclock::now();
+        LOG(INFO) << "["<<name<<"] " << "\t1st pass runtime = " << duration_cast<milliseconds>(stop - start).count() / 1000.0f << " sec";
 
         // 2nd pass: process max coverage using the sorted order by density
         std::unordered_set<uint64_t> step_mers; //can be prefilled?
@@ -132,12 +132,10 @@ public:
         //prefill
 
         std::vector<uint64_t> picked_blocks;
-        LOG(INFO) << "\t"
-                    << "Second pass: perform ordered max coverage...";
+        LOG(INFO) << "["<<name<<"] " << "\tsecond pass: perform ordered max coverage...";
         start = hrclock::now();
         double norm = (double)t_norm::num / t_norm::den;
-        LOG(INFO) << "\t"
-                    << "Computing norm = " << norm;
+        LOG(INFO) << "["<<name<<"] " << "\tcomputing norm = " << norm;
                       
         fixed_hasher<t_estimator_block_size> rk;
         std::unordered_set<uint64_t> best_local_mers;
@@ -184,24 +182,24 @@ public:
                 break; //breakout if dict is filled since adjusted is bigger
             step_mers.insert(best_local_mers.begin(), best_local_mers.end());
         }
-        LOG(INFO) << "\tblocks size to check = " << step_mers.size();
+        LOG(INFO) << "["<<name<<"] " << "\tblocks size to check = " << step_mers.size();
         step_mers.clear(); //save mem
         step_indices.clear(); //
         mers_counts.clear();
         
         std::sort(picked_blocks.begin(), picked_blocks.end());
         stop = hrclock::now();
-        LOG(INFO) << "\tpicked blocks = " << picked_blocks;
-        LOG(INFO) << "\t2nd pass runtime = " << duration_cast<milliseconds>(stop - start).count() / 1000.0f << " sec";
+        LOG(INFO) << "["<<name<<"] " << "\tpicked blocks = " << picked_blocks;
+        LOG(INFO) << "["<<name<<"] " << "\t2nd pass runtime = " << duration_cast<milliseconds>(stop - start).count() / 1000.0f << " sec";
 
         // last pass: writing to dict
-        LOG(INFO) << "\tlast: creating dictionary...";
+        LOG(INFO) << "["<<name<<"] " << "\tlast: creating dictionary...";
         sdsl::int_vector<8> dict(dict_size_bytes);
         {
             size_t current = 0;
             for (const auto& pb : picked_blocks) {
                 auto itr = input.begin() + pb;
-                for(size_t i=0;i<t_block_size) {
+                for(size_t i=0;i<t_block_size;i++) {
                     if(current == dict_size_bytes) break;
                     dict[current++] = itr;
                     ++itr;
@@ -210,9 +208,9 @@ public:
             }
         }
 
-        LOG(INFO) << "\tfinal dictionary size = " << dict.size() / (1024 * 1024) << " MiB";
+        LOG(INFO) << "["<<name<<"] " << "\tfinal dictionary size = " << dict.size() / (1024 * 1024) << " MiB";
         auto end_total = hrclock::now();
-        LOG(INFO) << "\t" << type() << " total time = " << duration_cast<milliseconds>(end_total - start_total).count() / 1000.0f << " sec";
+        LOG(INFO) << "["<<name<<"] " << "\t" << type() << " total time = " << duration_cast<milliseconds>(end_total - start_total).count() / 1000.0f << " sec";
         
         return dict;
     }

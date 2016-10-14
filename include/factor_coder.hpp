@@ -7,11 +7,6 @@
 
 #include <sdsl/suffix_arrays.hpp>
 
-struct coder_size_info {
-    uint32_t literal_bytes = 0;
-    uint32_t length_bytes = 0;
-    uint32_t offset_bytes = 0;
-};
 
 /*
 	encode factors in blocks.
@@ -44,16 +39,12 @@ struct factor_coder_blocked {
     }
 
     template <class t_istream>
-    coder_size_info decode_block(t_istream& ifs, block_factor_data& bfd, size_t num_factors) const
+    void decode_block(t_istream& ifs, block_factor_data& bfd, size_t num_factors) const
     {
-        coder_size_info csi;
         bfd.num_factors = num_factors;
-
-        auto len_pos = ifs.tellg();
         len_coder.decode(ifs, bfd.lengths.data(), num_factors);
-        csi.length_bytes = (ifs.tellg() - len_pos) / 8;
-
         std::for_each(bfd.lengths.begin(), bfd.lengths.begin() + num_factors, [](uint32_t& n) { n++; });
+        
         bfd.num_literals = 0;
         auto num_literal_factors = 0;
         for (size_t i = 0; i < bfd.num_factors; i++) {
@@ -63,16 +54,11 @@ struct factor_coder_blocked {
             }
         }
         if (bfd.num_literals) {
-            auto lit_pos = ifs.tellg();
             literal_coder.decode(ifs, bfd.literals.data(), bfd.num_literals);
-            csi.literal_bytes = (ifs.tellg() - lit_pos) / 8;
         }
         bfd.num_offsets = bfd.num_factors - num_literal_factors;
         if (bfd.num_offsets) {
-            auto off_pos = ifs.tellg();
             offset_coder.decode(ifs, bfd.offsets.data(), bfd.num_offsets);
-            csi.offset_bytes = (ifs.tellg() - off_pos) / 8;
         }
-        return csi;
     }
 };

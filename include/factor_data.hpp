@@ -63,7 +63,7 @@ struct block_factor_data {
         }
     }
     
-    template<class t_enc_stream>
+    template<class t_enc_stream,class t_coder>
     size_t encode_current_block(t_enc_stream& enc,t_coder& coder)
     {
         coder.encode_block(enc,*this);

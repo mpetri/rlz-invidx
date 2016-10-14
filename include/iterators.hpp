@@ -28,7 +28,6 @@ private:
 
 public:
     const size_t& block_id = m_block_offset;
-    coder_size_info cur_block_size_info;
 
 public:
     factor_iterator(t_idx& idx, size_t block_offset, size_t factor_offset)
@@ -44,7 +43,7 @@ public:
         if (m_block_offset < m_idx.block_map.num_blocks()) {
             m_factors_in_cur_block = m_idx.block_map.block_factors(m_block_offset);
             auto block_file_offset = m_idx.block_map.block_offset(m_block_offset);
-            cur_block_size_info = m_idx.decode_factors(block_file_offset, m_block_factor_data, m_factors_in_cur_block);
+            m_idx.decode_factors(block_file_offset, m_block_factor_data, m_factors_in_cur_block);
             m_in_block_literals_offset = 0;
             m_in_block_offsets_offset = 0;
         }
