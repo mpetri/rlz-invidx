@@ -63,13 +63,29 @@ struct factorizor {
         be.id = id;
         t_coder coder;
         block_factor_data bfd(block_size);
+        size_t block_per_100MiB = 100*1024*1024 / block_size;
+        size_t total_factors = 0;
+        auto start = hrclock::now();
         {
             bit_ostream<sdsl::bit_vector> encoded_stream(be.data);
             for (size_t i = 0; i < blocks_to_encode; i++) {
                 be.offsets.push_back(encoded_stream.tellp());
                 auto num_factors = factorize_block(dict_idx,bfd,coder,encoded_stream,data_ptr,block_size);
                 be.factors.push_back(num_factors);
+                total_factors += num_factors;
                 data_ptr += block_size;
+
+                if( i+1 % block_per_100MiB == 0) {
+                    auto now = hrclock::now();
+                    auto enc_seconds = duration_cast<milliseconds>(now - start).count() / 1000.0;
+                    size_t bytes_encoded = (i+1) * block_size;
+                    size_t bytes_written = encoded_stream.tellp() / 8;
+                    auto mb_encoded = bytes_encoded / (1024 * 1024.0);
+                    double avg_factor_len = double(bytes_encoded) / double(total_factors);
+                    double speed = mb_encoded / enc_seconds;
+                    double cr = double(bytes_written) / double(bytes_encoded) * 100.0;
+                    LOG(INFO) << "[" << id << "] " << "AVG " << avg_factor_len << " " << " SPEED = " << speed << "MiB/s" << " CR = " << cr << "%";
+                }
             }
         }
         return be;

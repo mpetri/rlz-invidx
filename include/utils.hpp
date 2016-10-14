@@ -163,7 +163,6 @@ std::string safe_print(t_itr itr, t_itr end)
 typedef struct cmdargs {
     std::string collection_dir;
     size_t dict_size_in_bytes;
-    size_t pruned_dict_size_in_bytes;
     bool rebuild;
     uint32_t threads;
     bool verify;
@@ -204,7 +203,7 @@ parse_args(int argc, const char* argv[])
             break;
         }
     }
-    if (args.collection_dir == "") {
+    if (args.collection_dir == "" || args.dict_size_in_bytes == 0) {
         std::cerr << "Missing command line parameters.\n";
         print_usage(argv[0]);
         exit(EXIT_FAILURE);

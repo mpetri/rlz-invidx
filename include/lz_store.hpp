@@ -29,6 +29,7 @@ public:
     coder_type coder;
     sdsl::int_vector_mapper<1, std::ios_base::in>& compressed_data = m_compressed_data;
     uint64_t data_size;
+    std::string name;
 public:
     class builder;
 
@@ -40,20 +41,21 @@ public:
     lz_store() = delete;
     lz_store(lz_store&&) = default;
     lz_store& operator=(lz_store&&) = default;
-    lz_store(collection& col,std::string input_file,uint32_t hash)
+    lz_store(collection& col,std::string input_file,uint32_t hash,std::string n)
         : m_compressed_data(col.file_name(hash,type()))
         , m_compressed_stream(m_compressed_data) // (1) mmap factored data
+        , name(n)
     {
-        LOG(INFO) << "loading lz store into memory (" << type() << ")";
+        LOG(INFO) << "[" << name << "] " << "loading lz store into memory (" << type() << ")";
         // (2) load the block map
-        LOG(INFO) << "\tload block map";
+        LOG(INFO) << "[" << name << "] " << "\tload block map";
         sdsl::load_from_file(m_blockmap, col.file_name(hash,block_map_type::type()));
         {
-            LOG(INFO) << "\tdetermine data size";
+            LOG(INFO) << "[" << name << "] " << "\tdetermine data size";
             const sdsl::int_vector_mapper<8, std::ios_base::in> data(input_file,true);
             data_size = data.size();
         }
-        LOG(INFO) << "lz store ready (" << type() << ")";
+        LOG(INFO) << "[" << name << "] " << "lz store ready (" << type() << ")";
     }
 
     auto begin() const -> lz_iterator<decltype(*this)>
@@ -216,7 +218,7 @@ public:
         }
         auto stop = hrclock::now();
         LOG(INFO) << "["<<name<<"] " << "lz construction complete. time = " << duration_cast<seconds>(stop - start).count() << " sec";
-        return lz_store(col,input_file,hash);
+        return lz_store(col,input_file,hash,name);
     }
 private:
     bool rebuild = false;

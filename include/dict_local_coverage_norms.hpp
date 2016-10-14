@@ -201,7 +201,7 @@ public:
                 auto itr = input.begin() + pb;
                 for(size_t i=0;i<t_block_size;i++) {
                     if(current == dict_size_bytes) break;
-                    dict[current++] = itr;
+                    dict[current++] = *itr;
                     ++itr;
                 }
                 if(current == dict_size_bytes) break;

@@ -7,9 +7,9 @@
 using namespace std::chrono;
 
 template <class t_idx>
-bool verify_index(std::string input_file,t_idx& idx,std::string name )
+bool verify_index(std::string input_file,t_idx& idx)
 {
-    LOG(INFO) << "["<<name<<"] " << "Verify that factorization is correct.";
+    LOG(INFO) << "["<<idx.name<<"] " << "Verify that factorization is correct.";
     sdsl::read_only_mapper<8> input(input_file,true);
     auto num_blocks = input.size() / t_idx::block_size;
 
@@ -19,14 +19,14 @@ bool verify_index(std::string input_file,t_idx& idx,std::string name )
         auto block_start = i * t_idx::block_size;
         if (block_content.size() != t_idx::block_size) {
             error = true;
-            LOG_N_TIMES(100, ERROR) << "["<<name<<"] " << "Error in block " << i
+            LOG_N_TIMES(100, ERROR) << "["<<idx.name<<"] " << "Error in block " << i
                                     << " block size = " << block_content.size()
                                     << " encoding block_size = " << t_idx::block_size;
         }
         auto eq = std::equal(block_content.begin(), block_content.end(), input.begin() + block_start);
         if (!eq) {
             error = true;
-            LOG(ERROR) << "["<<name<<"] " << "BLOCK " << i << " NOT EQUAL";
+            LOG(ERROR) << "["<<idx.name<<"] " << "BLOCK " << i << " NOT EQUAL";
             for (size_t j = 0; j < t_idx::block_size; j++) {
                 if (input[block_start + j] != block_content[j]) {
                     LOG_N_TIMES(100, ERROR) << "Error at pos " << j << "(" << block_start + j << ") should be '"
@@ -42,24 +42,24 @@ bool verify_index(std::string input_file,t_idx& idx,std::string name )
         auto block_start = num_blocks * t_idx::block_size;
         if (block_content.size() != left) {
             error = true;
-            LOG(ERROR) << "["<<name<<"] " << "Error in LAST block "
+            LOG(ERROR) << "["<<idx.name<<"] " << "Error in LAST block "
                        << " block size = " << block_content.size()
                        << " left  = " << left;
         }
         auto eq = std::equal(block_content.begin(), block_content.end(), input.begin() + block_start);
         if (!eq) {
             error = true;
-            LOG(ERROR) << "["<<name<<"] " << "LAST BLOCK IS NOT EQUAL";
+            LOG(ERROR) << "["<<idx.name<<"] " << "LAST BLOCK IS NOT EQUAL";
             for (size_t j = 0; j < left; j++) {
                 if (input[block_start + j] != block_content[j]) {
-                    LOG_N_TIMES(100, ERROR) << "["<<name<<"] " << "Error at pos " << j << "(" << block_start + j << ") should be '"
+                    LOG_N_TIMES(100, ERROR) << "["<<idx.name<<"] " << "Error at pos " << j << "(" << block_start + j << ") should be '"
                                             << (int)input[block_start + j] << "' is '" << (int)block_content[j] << "'";
                 }
             }
         }
     }
     if (!error) {
-        LOG(INFO) << "["<<name<<"] " << "SUCCESS! sucessfully recovered.";
+        LOG(INFO) << "["<<idx.name<<"] " << "SUCCESS! sucessfully recovered.";
     }
     return error;
 }
