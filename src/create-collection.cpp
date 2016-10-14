@@ -10,15 +10,17 @@ typedef struct cmdargs {
     std::string collection_dir;
     std::string input_prefix;
     std::string encoding;
+    bool blocking;
 } cmdargs_t;
 
 void print_usage(const char* program)
 {
-    fprintf(stdout, "%s -c <collection directory> -i <input prefix> -e <encoding>\n", program);
+    fprintf(stdout, "%s -c <collection directory> -i <input prefix> -e <encoding> -b\n", program);
     fprintf(stdout, "where\n");
     fprintf(stdout, "  -c <collection directory>  : the directory the collection is stored.\n");
     fprintf(stdout, "  -i <input prefix>          : the d2si input prefix.\n");
     fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32).\n");
+    fprintf(stdout, "  -b                         : blocking.\n");
 };
 
 cmdargs_t
@@ -29,13 +31,17 @@ parse_args(int argc, const char* argv[])
     args.collection_dir = "";
     args.input_prefix = "";
     args.encoding = "u32";
-    while ((op = getopt(argc, (char* const*)argv, "c:i:e:")) != -1) {
+    args.blocking = false;
+    while ((op = getopt(argc, (char* const*)argv, "c:i:e:b:")) != -1) {
         switch (op) {
         case 'c':
             args.collection_dir = optarg;
             break;
         case 'i':
             args.input_prefix = optarg;
+            break;
+        case 'b':
+            args.blocking = true;
             break;
         case 'e':
             args.encoding = optarg;
@@ -140,81 +146,61 @@ int main(int argc, const char* argv[])
     std::string output_freqs = args.collection_dir + "/" + KEY_FREQS + KEY_SUFFIX;
     
     uint64_t num_postings = 0;
-    LOG(INFO) << "writing docids";
+    bool vbyte = false;
+    if(args.encoding == "vbyte") vbyte = true;
+    
+    LOG(INFO) << "writing docids (vbyte=" << vbyte << ")";
     {
         sdsl::int_vector_buffer<8> docs_out(output_docids,std::ios::out,128*1024*1024);
         std::ifstream docfs(input_docids, std::ios::binary);
-        
         
         read_uint32(docfs);
         uint32_t ndocs_d = read_uint32(docfs);
         LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
         size_t list_id = 1;
-        if(args.encoding == "u32") {
-            LOG(INFO) << "encoding docid differences using u32";
-            while(!docfs.eof()) {
-                uint32_t list_len = read_uint32(docfs);
-                uint32_t prev = read_uint32(docfs);
-                write_uint32(docs_out,prev);
-                num_postings++;
-                for(uint32_t i=1;i<list_len;i++) {
-                    uint32_t cur = read_uint32(docfs);
-                    uint32_t gap = cur-prev;
-                    prev = cur;
-                    write_uint32(docs_out,gap);
-                    num_postings++;
+        LOG(INFO) << "encoding docid differences (blocking = " << args.blocking << ")";
+        while(!docfs.eof()) {
+            uint32_t list_len = read_uint32(docfs);
+            
+            uint32_t prev = read_uint32(docfs);
+            if(vbyte) write_vbyte(docs_out,prev);
+            else write_uint32(docs_out,prev);
+            
+            num_postings++;
+            for(uint32_t i=1;i<list_len;i++) {
+                uint32_t cur = read_uint32(docfs);
+                uint32_t gap = cur-prev;
+                prev = cur;
+                
+                if(args.blocking == true && i % BLOCK_SIZE == 0) {
+                    gap = cur;
                 }
-                list_id++;
-            }
-        } else {
-            LOG(INFO) << "encoding docid differences using vbyte";
-            while(!docfs.eof()) {
-                uint32_t list_len = read_uint32(docfs);
-                uint32_t prev = read_uint32(docfs);
-                write_vbyte(docs_out,prev);
+                
+                if(vbyte) write_vbyte(docs_out,gap);
+                else write_uint32(docs_out,gap);
                 num_postings++;
-                for(uint32_t i=1;i<list_len;i++) {
-                    uint32_t cur = read_uint32(docfs);
-                    uint32_t gap = cur-prev;
-                    prev = cur;
-                    write_vbyte(docs_out,gap);
-                    num_postings++;
-                }
-                list_id++;
             }
+            list_id++;
         }
         LOG(INFO) << "processed terms = " << list_id;
         LOG(INFO) << "docid postings = " << num_postings;
     }
-    LOG(INFO) << "writing freqs";
+    LOG(INFO) << "writing freqs (vbyte=" << vbyte << ")";
     {
         sdsl::int_vector_buffer<8> freqs_out(output_freqs,std::ios::out,128*1024*1024);
         std::ifstream freqsfs(input_freqs, std::ios::binary);
         
         size_t list_id = 1;
         num_postings = 0;
-        if(args.encoding == "u32") {
-            LOG(INFO) << "encoding freqs using u32";
-            while(!freqsfs.eof()) {
-                uint32_t list_len = read_uint32(freqsfs);
-                for(uint32_t i=0;i<list_len;i++) {
-                    uint32_t freq = read_uint32(freqsfs);
-                    write_uint32(freqs_out,freq);
-                    num_postings++;
-                }
-                list_id++;
+        while(!freqsfs.eof()) {
+            uint32_t list_len = read_uint32(freqsfs);
+            for(uint32_t i=0;i<list_len;i++) {
+                uint32_t freq = read_uint32(freqsfs);
+                if(vbyte) write_vbyte(freqs_out,freq);
+                else write_uint32(freqs_out,freq);
+                num_postings++;
             }
-        } else {
-            LOG(INFO) << "encoding freqs using vbyte";
-            while(!freqsfs.eof()) {
-                uint32_t list_len = read_uint32(freqsfs);
-                for(uint32_t i=0;i<list_len;i++) {
-                    uint32_t freq = read_uint32(freqsfs);
-                    write_vbyte(freqs_out,freq);
-                    num_postings++;
-                }
-                list_id++;
-            }
+            list_id++;
         }
         LOG(INFO) << "processed terms = " << list_id;
         LOG(INFO) << "freq postings = " << num_postings;
