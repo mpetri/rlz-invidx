@@ -4,7 +4,7 @@
 #include <string>
 #include <sdsl/rmq_support.hpp>
 
-template <class t_itr, bool t_local_search>
+template <class t_itr>
 struct factor_itr_sa {
     const sdsl::int_vector<>& sa;
     const sdsl::int_vector<8>& text;
@@ -23,8 +23,8 @@ struct factor_itr_sa {
     uint8_t sym;
     bool done;
     bool local;
-
-    // std::unordered_map<uint32_t,std::vector<uint32_t>> qgrams;
+    const bool t_local_search = false;
+    
     factor_itr_sa(const sdsl::int_vector<>& _sa, const sdsl::int_vector<8>& _text, const sdsl::int_vector<>& _cache, t_itr begin, t_itr _end)
         : sa(_sa)
         , text(_text)
@@ -44,7 +44,6 @@ struct factor_itr_sa {
         , local(false)
     {
         find_next_factor();
-        //qgrams.reserve(64000);
     }
     factor_itr_sa& operator++()
     {
@@ -178,10 +177,6 @@ struct factor_itr_sa {
             sp = cache[two_gram * 2];
             ep = cache[two_gram * 2 + 1];
             if (ep < sp) {
-                // len = 0;
-                // ++itr;
-                // factor_start = itr;
-                // return;
                 sp = 0;
                 ep = sa.size() - 1;
             }
@@ -230,85 +225,52 @@ struct dict_index_sa {
         return "dict_index_sa-" + sdsl::util::class_to_hash(*this);
     }
 
-    dict_index_sa(collection& col, bool rebuild)
+    dict_index_sa(sdsl::int_vector<8>& dict)
     {
-        auto dict_hash = col.param_map[PARAM_DICT_HASH];
-        auto file_name = col.path + "/index/" + type() + "-dhash=" + dict_hash + ".sdsl";
-        if (!rebuild && utils::file_exists(file_name)) {
-            LOG(INFO) << "\tDictionary index exists. Loading index from file.";
-            std::ifstream ifs(file_name);
-            load(ifs);
-        }
-        else {
-            LOG(INFO) << "\tConstruct and store dictionary index";
-            LOG(INFO) << "\tConstruct suffix array";
-            sdsl::load_from_file(text, col.file_map[KEY_DICT]);
-            sa.width(sdsl::bits::hi(text.size()) + 1);
-            sdsl::algorithm::calculate_sa((const uint8_t*)text.data(), text.size(), sa);
+        LOG(INFO) << "\tconstruct dictionary index";
+        LOG(INFO) << "\tconstruct suffix array";
+        sa.width(sdsl::bits::hi(text.size()) + 1);
+        sdsl::algorithm::calculate_sa((const uint8_t*)text.data(), text.size(), sa);
 
-            //
-            LOG(INFO) << "\tCompute a 3-gram cache";
-            {
-                size_t num_kgrams = 256 * 256 * 256;
-                sdsl::int_vector<> counts(num_kgrams);
-                uint32_t cur_k_gram = uint32_t(text[0]) << 16 | uint32_t(text[1]) << 8 | uint32_t(text[2]);
+        LOG(INFO) << "\tCompute a 3-gram cache";
+        {
+            size_t num_kgrams = 256 * 256 * 256;
+            sdsl::int_vector<> counts(num_kgrams);
+            uint32_t cur_k_gram = uint32_t(text[0]) << 16 | uint32_t(text[1]) << 8 | uint32_t(text[2]);
+            counts[cur_k_gram]++;
+            for (size_t i = 3; i < text.size(); i++) {
+                cur_k_gram = ((cur_k_gram << 8) & 0xFFFF00) | uint32_t(text[i]);
                 counts[cur_k_gram]++;
-                for (size_t i = 3; i < text.size(); i++) {
-                    cur_k_gram = ((cur_k_gram << 8) & 0xFFFF00) | uint32_t(text[i]);
-                    counts[cur_k_gram]++;
-                }
-
-                /* fix up some counts at the end */
-                counts[0] = 1;
-                cur_k_gram = uint32_t(text[text.size() - 2]) << 16 | uint32_t(text[text.size() - 1]) << 8 | uint32_t(text[text.size() - 1]);
-                counts[cur_k_gram]++;
-
-                sdsl::int_vector<> ccounts(num_kgrams);
-                ccounts[0] = 0;
-
-                for (size_t i = 1; i < num_kgrams; i++)
-                    ccounts[i] = ccounts[i - 1] + counts[i - 1];
-
-                cache.resize(num_kgrams * 2);
-                for (size_t i = 0; i < num_kgrams; i++) {
-                    cache[i * 2] = ccounts[i];
-                    cache[i * 2 + 1] = ccounts[i] + counts[i] - 1;
-                    if (counts[i] == 0) {
-                        cache[i * 2] += 2;
-                        cache[i * 2 + 1] += 1;
-                    }
-                }
-                sdsl::util::bit_compress(cache);
             }
-            LOG(INFO) << "\tWrite index to disk";
-            std::ofstream ofs(file_name);
-            serialize(ofs);
+
+            /* fix up some counts at the end */
+            counts[0] = 1;
+            cur_k_gram = uint32_t(text[text.size() - 2]) << 16 | uint32_t(text[text.size() - 1]) << 8 | uint32_t(text[text.size() - 1]);
+            counts[cur_k_gram]++;
+
+            sdsl::int_vector<> ccounts(num_kgrams);
+            ccounts[0] = 0;
+
+            for (size_t i = 1; i < num_kgrams; i++)
+                ccounts[i] = ccounts[i - 1] + counts[i - 1];
+
+            cache.resize(num_kgrams * 2);
+            for (size_t i = 0; i < num_kgrams; i++) {
+                cache[i * 2] = ccounts[i];
+                cache[i * 2 + 1] = ccounts[i] + counts[i] - 1;
+                if (counts[i] == 0) {
+                    cache[i * 2] += 2;
+                    cache[i * 2 + 1] += 1;
+                }
+            }
+            sdsl::util::bit_compress(cache);
         }
     }
 
-    inline size_type serialize(std::ostream& out, sdsl::structure_tree_node* v = NULL, std::string name = "") const
+    template <class t_itr>
+    factor_itr_sa<t_itr> factorize(t_itr itr, t_itr end) const
     {
-        using namespace sdsl;
-        structure_tree_node* child = structure_tree::add_child(v, name, sdsl::util::class_name(*this));
-        size_type written_bytes = 0;
-        written_bytes += sa.serialize(out, child, "sa");
-        written_bytes += text.serialize(out, child, "text");
-        written_bytes += cache.serialize(out, child, "cache");
-        sdsl::structure_tree::add_size(child, written_bytes);
-        return written_bytes;
-    }
-
-    inline void load(std::istream& in)
-    {
-        sa.load(in);
-        text.load(in);
-        cache.load(in);
-    }
-
-    template <class t_itr, bool t_search_local_block_context>
-    factor_itr_sa<t_itr, t_search_local_block_context> factorize(t_itr itr, t_itr end) const
-    {
-        return factor_itr_sa<t_itr, t_search_local_block_context>(sa, text, cache, itr, end);
+        return factor_itr_sa<t_itr>(sa, text, cache, itr, end);
     }
 
     bool is_reverse() const

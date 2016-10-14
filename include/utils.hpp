@@ -59,6 +59,17 @@ crc(const uint8_t* buf, size_t len)
 }
 
 uint32_t
+crc(sdsl::int_vector<8>& T)
+{
+    const uint8_t* buf = (const uint8_t*) T.data();
+    size_t len = T.size();
+    uint32_t crc_val = crc32(0L, Z_NULL, 0);
+    crc_val = crc32(crc_val, buf, (uint32_t)len);
+    return crc_val;
+}
+
+
+uint32_t
 crc(std::string file_name)
 {
     sdsl::read_only_mapper<8> dat(file_name,true);

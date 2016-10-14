@@ -5,40 +5,29 @@
 
 #include "iterators.hpp"
 #include "block_maps.hpp"
-#include "factor_selector.hpp"
 #include "factorizor.hpp"
 #include "factor_coder.hpp"
 #include "dict_strategies.hpp"
-#include "dict_indexes.hpp"
 
 #include <sdsl/suffix_arrays.hpp>
 
 using namespace std::chrono;
 
 template <class t_dictionary_creation_strategy,
-    class t_dictionary_index,
     uint32_t t_factorization_block_size,
-    bool t_search_local_block_context,
-    class t_factor_selection_strategy,
-    class t_factor_coder,
-    class t_block_map>
-class rlz_store_static {
+    class t_factor_coder>
+class rlz_store {
 public:
     using dictionary_creation_strategy = t_dictionary_creation_strategy;
-    using dictionary_index = t_dictionary_index;
-    using factor_selection_strategy = t_factor_selection_strategy;
     using factor_coder_type = t_factor_coder;
-    using factorization_strategy = factorizor<t_factorization_block_size, t_search_local_block_context,
-        dictionary_index, factor_selection_strategy, factor_coder_type>;
-    using block_map_type = t_block_map;
+    using factorization_strategy = factorizor<t_factorization_block_size,factor_coder_type>;
+    using block_map_type = block_map_uncompressed<true>;
     using size_type = uint64_t;
-
 private:
-    sdsl::int_vector_mapper<1, std::ios_base::in> m_factored_text;
+    sdsl::int_vector_mapper<1, std::ios_base::in> m_factored_data;
     bit_istream<sdsl::int_vector_mapper<1, std::ios_base::in> > m_factor_stream;
     sdsl::int_vector<8> m_dict;
     block_map_type m_blockmap;
-
 public:
     enum { block_size = t_factorization_block_size };
     enum { search_local_block_context = t_search_local_block_context };
@@ -46,12 +35,9 @@ public:
     block_map_type& block_map = m_blockmap;
     sdsl::int_vector<8>& dict = m_dict;
     factor_coder_type m_factor_coder;
-    sdsl::int_vector_mapper<1, std::ios_base::in>& factor_text = m_factored_text;
-    uint64_t text_size;
-    std::string m_dict_hash;
-    std::string m_dict_file;
+    sdsl::int_vector_mapper<1, std::ios_base::in>& factor_text = m_factored_data;
+    uint64_t data_size;
     std::string m_factor_file;
-
 public:
     class builder;
 
@@ -59,16 +45,15 @@ public:
     {
         auto dict_size_mb = dict.size() / (1024 * 1024);
         return dictionary_creation_strategy::type() + "-" + std::to_string(dict_size_mb) + "_"
-            + factor_selection_strategy::type() + "_"
             + factor_coder_type::type();
     }
 
-    rlz_store_static() = delete;
-    rlz_store_static(rlz_store_static&&) = default;
-    rlz_store_static& operator=(rlz_store_static&&) = default;
-    rlz_store_static(collection& col)
-        : m_factored_text(col.file_map[KEY_FACTORIZED_TEXT])
-        , m_factor_stream(m_factored_text) // (1) mmap factored text
+    rlz_store() = delete;
+    rlz_store(rlz_store&&) = default;
+    rlz_store& operator=(rlz_store&&) = default;
+    rlz_store(collection& col)
+        : m_factored_data(col.file_map[KEY_FACTORIZED_TEXT])
+        , m_factor_stream(m_factored_data) // (1) mmap factored text
     {
         LOG(INFO) << "Loading RLZ store into memory";
         m_factor_file = col.file_map[KEY_FACTORIZED_TEXT];
@@ -85,7 +70,7 @@ public:
         {
             LOG(INFO) << "\tDetermine text size";
             const sdsl::int_vector_mapper<8, std::ios_base::in> text(col.file_map[KEY_TEXT]);
-            text_size = text.size();
+            data_size = text.size();
         }
         LOG(INFO) << "RLZ store ready";
     }
@@ -112,12 +97,12 @@ public:
 
     size_type size() const
     {
-        return text_size;
+        return data_size;
     }
 
     size_type size_in_bytes() const
     {
-        return m_dict.size() + (m_factored_text.size() >> 3) + m_blockmap.size_in_bytes();
+        return m_dict.size() + (m_factored_data.size() >> 3) + m_blockmap.size_in_bytes();
     }
 
     inline coder_size_info decode_factors(size_t offset,

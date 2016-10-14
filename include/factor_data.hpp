@@ -62,4 +62,11 @@ struct block_factor_data {
             offset_literals[num_offset_literals++] = offset;
         }
     }
+    
+    template<class t_enc_stream>
+    size_t encode_current_block(t_enc_stream& enc,t_coder& coder)
+    {
+        coder.encode_block(enc,*this);
+        return num_factors;
+    }
 };

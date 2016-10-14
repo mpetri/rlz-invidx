@@ -14,171 +14,136 @@
 #include <future>
 
 template <uint32_t t_block_size,
-          bool t_search_local_block_context,
-          class t_index,
-          class t_factor_selector,
           class t_coder>
 struct factorizor {
+    
+    struct block_encodings {
+        size_t id;
+        std::vector<uint64_t> offsets;
+        std::vector<uint64_t> factors;
+        sdsl::bit_vector data;
+        bool operator<(const block_encodings& fi) const
+        {
+            return id < fi.id;
+        }
+    };
+
     static std::string type()
     {
-        return "factorizor-" + std::to_string(t_block_size) + "-l" + std::to_string(t_search_local_block_context) + "-" + t_factor_selector::type() + "-" + t_coder::type();
+        return "factorizor-" + std::to_string(t_block_size) + "-" + t_coder::type();
     }
 
-    static std::string factor_file_name(collection& col)
+    template<class t_enc_stream>
+    static factorize_block(dict_index_sa& idx,block_factor_data& fs,t_coder& coder,t_enc_stream& encoded_stream,const uint8_t* data_ptr,size_t size)
     {
-        auto dict_hash = col.param_map[PARAM_DICT_HASH];
-        return col.path + "/index/" + type() + "-dhash=" + dict_hash + ".sdsl";
-    }
-
-    static std::string boffsets_file_name(collection& col)
-    {
-        auto dict_hash = col.param_map[PARAM_DICT_HASH];
-        return col.path + "/index/" + KEY_BLOCKOFFSETS + "-fs=" + type() + "-dhash=" + dict_hash + ".sdsl";
-    }
-
-    static std::string bfactors_file_name(collection& col)
-    {
-        auto dict_hash = col.param_map[PARAM_DICT_HASH];
-        return col.path + "/index/" + KEY_BLOCKFACTORS + "-fs=" + type() + "-dhash=" + dict_hash + ".sdsl";
-    }
-
-    template <class t_factor_store, class t_itr>
-    static void factorize_block(t_factor_store& fs, t_coder& coder, const t_index& idx, t_itr itr, t_itr end,std::unordered_map<uint64_t,utils::qgram_postings>& )
-    {
-        uint64_t encoding_block_size = std::distance(itr,end);
-        auto factor_itr = idx.factorize<decltype(itr),t_search_local_block_context>(itr, end);
+        auto itr = data_ptr;
+        auto end = itr + size;
+        auto factor_itr = idx.factorize<decltype(data_ptr)>(itr, end);
         fs.start_new_block();
         size_t syms_encoded = 0;
-        double factors = 0;
         while (!factor_itr.finished()) {
             if (factor_itr.len == 0) {
                 fs.add_to_block_factor(coder, itr + syms_encoded, 0, 1);
                 syms_encoded++;
             } else {
-                uint64_t offset = 0;
-                {
-                    // auto t = lm_bench::bench(timer_type::PickOffset);
-                    offset = t_factor_selector::template pick_offset<>(idx, factor_itr,t_search_local_block_context,encoding_block_size);
-                }
+                uint64_t offset = factor_select_first::pick_offset<>(idx, factor_itr,size);
                 fs.add_to_block_factor(coder, itr + syms_encoded, offset, factor_itr.len);
                 syms_encoded += factor_itr.len;
             }
-            factors++;
-            {
-                // auto t = lm_bench::bench(timer_type::FindFactor);
-                ++factor_itr;
-            }
+            ++factor_itr;
         }
-        {
-            // auto t = lm_bench::bench(timer_type::EncodeBlock);
-            fs.encode_current_block(coder);
-        }
-        // exit(EXIT_SUCCESS);
+        auto num_factors = fs.encode_current_block(encoded_stream,coder);
+        return num_factors;
     }
 
-    template <class t_factor_store, class t_itr>
-    static typename t_factor_store::result_type
-    factorize(collection& col, t_index& idx, t_itr _itr, t_itr _end, size_t offset = 0)
+    static block_encodings 
+    factorize_blocks(dict_index_sa& idx,const uint8_t* data_ptr, size_t block_size, size_t blocks_to_encode, size_t id)
     {
-        const sdsl::int_vector_mapped_buffer<8> text(col.file_map[KEY_TEXT]);
-        auto itr = text.begin() + _itr;
-        auto end = text.begin() + _end;
-        
-        std::unordered_map<uint64_t,utils::qgram_postings> qgc;
-
-        /* (1) create output files */
-        t_factor_store fs(col, t_block_size, offset);
-
-        /* (2) create encoder  */
+        block_encodings be;
+        be.id = id;
         t_coder coder;
-
-        /* (3) compute text stats */
-        auto block_size = t_block_size;
-        size_t n = std::distance(itr, end);
-        size_t num_blocks = n / block_size;
-        auto left = n % block_size;
-        auto blocks_per_10mib = (10 * 1024 * 1024) / block_size;
-
-        /* (4) encode blocks */
-        for (size_t i = 1; i <= num_blocks; i++) {
-            auto block_end = itr + block_size;
-            // LOG(INFO) << "block " << i;
-            factorize_block(fs, coder, idx, itr, block_end,qgc);
-            itr = block_end;
-            block_end += block_size;
-            if (i % blocks_per_10mib == 0) {
-                fs.output_stats(num_blocks);
-                // lm_bench::print(offset);
-                // lm_bench::reset();
+        block_factor_data bfd(block_size);
+        {
+            bit_ostream<sdsl::bit_vector> encoded_stream(be.data);
+            for (size_t i = 0; i < blocks_to_encode; i++) {
+                be.offsets.push_back(encoded_stream.tellp());
+                auto num_factors = factorize_block(dict_idx,bfd,coder,encoded_stream,data_ptr,block_size);
+                be.factors.push_back(num_factors);
+                data_ptr += block_size;
             }
         }
+        return be;
+    }
 
-        /* (5) is there a non-full block? */
-        if (left != 0) {
-            factorize_block(fs, coder, idx, itr, end,qgc);
+    void
+    parallel_factorize(collection& col,std::string input_file,sdsl::int_vector<8>& dict,uint32_t hash,uint32_t num_threads)
+    {
+        auto rlz_output_file = col.file_name(hash,type());
+        
+        LOG(INFO) << "create dictionary index";
+        dict_index_sa dict_idx(dict);
+        
+        auto data_size = 0ULL;
+        auto data_size_mb = data_size / (1024 * 1024.0);
+        {
+            const sdsl::int_vector_mapped_buffer<8> data(col.file_map[KEY_TEXT]);
+            data_size = data.size();
+        }
+        LOG(INFO) << "factorize data - " << data_size_mb << " MiB (" << num_threads << " threads) - (" << type() << ")";
+        
+        auto num_blocks = input.size() / t_block_size;
+        auto left = input.size() % t_block_size;
+        block_map_uncompressed<true> bmap;
+        if(left)
+            bmap.m_block_offsets.resize(num_blocks+1);
+        else
+            bmap.m_block_offsets.resize(num_blocks);
+            
+        const size_t blocks_per_thread = (512 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
+        const sdsl::int_vector_mapper<8, std::ios_base::in> input(input_file,true);
+        auto encoded_data = sdsl::write_out_buffer<1>::create(rlz_output_file);
+        bit_ostream<sdsl::int_vector_mapper<1> > encoded_stream(encoded_data);
+        size_t init_blocks = num_blocks;
+        size_t offset_idx = 0;
+        while (num_blocks) {
+            std::vector<std::future<block_encodings> > fis;
+            for (size_t i = 0; i < num_threads; i++) {
+                size_t blocks_to_encode = std::min(blocks_per_thread, num_blocks);
+                fis.push_back(std::async(std::launch::async, [data_ptr, blocks_to_encode, i] {
+                    return factorize_blocks(dict_idx,data_ptr, t_block_size, blocks_to_encode, i);
+                }));
+                data_ptr += (t_block_size * blocks_to_encode);
+                num_blocks -= blocks_to_encode;
+                if (num_blocks == 0)
+                    break;
+            }
+            // join the threads
+            for (auto& fbe : fis) {
+                const auto& be = fbe.get();
+                size_t size_offset = encoded_stream.tellp();    
+                for(size_t i=0;i<be.offsets.size();i++) {
+                    size_t o = be.offsets[i];
+                    size_t f = be.factors[i];
+                    bmap.m_block_offsets[offset_idx] = size_offset + o;
+                    bmap.m_block_factors[offset_idx] = f;
+                    offset_idx++;
+                }
+                encoded_stream.append(be.data);
+            }
+            LOG(INFO) << "["<<name<<"] " << "\t encoded blocks: " << init_blocks - num_blocks << "/" << init_blocks;
         }
         
-        return fs.result();
-    }
-
-    static std::string factorcoder_file_name(collection& col)
-    {
-        return col.path + "/index/" + KEY_FCODER + "-"
-               + t_coder::type() + "-" + type() + "-"
-               + col.param_map[PARAM_DICT_HASH] + ".sdsl";
-    }
-
-    template <class t_factor_store>
-    static typename t_factor_store::result_type
-    parallel_factorize(collection& col, bool rebuild, uint32_t num_threads)
-    {
-        LOG(INFO) << "Create/Load dictionary index";
-        t_index idx(col, rebuild);
-        std::vector<typename t_factor_store::result_type> efs;
-        {
-            auto text_size = 0ULL;
-            {
-                const sdsl::int_vector_mapped_buffer<8> text(col.file_map[KEY_TEXT]);
-                text_size = text.size();
-            }
-            auto text_size_mb = text_size / (1024 * 1024.0);
-            auto start_fact = hrclock::now();
-            LOG(INFO) << "Factorize text - " << text_size_mb << " MiB (" << num_threads << " threads) - (" << type() << ")";
-
-            std::vector<std::future<typename t_factor_store::result_type> > fis;
-
-            auto num_blocks = text_size / t_block_size;
-            auto blocks_per_thread = num_blocks / num_threads;
-            auto syms_per_thread = blocks_per_thread * t_block_size;
-            auto left = text_size;
-            auto itr = 0ULL;
-            for (size_t i = 0; i < num_threads; i++) {
-                auto begin = itr;
-                auto end = begin + syms_per_thread;
-                if (left < 2 * syms_per_thread) // last thread might have to encode a little more
-                    end = text_size;
-                fis.push_back(std::async(std::launch::async, [&, begin, end, i] {
-                        return factorize<t_factor_store>(col,idx,begin,end,i);
-                }));
-                itr += syms_per_thread;
-                left -= syms_per_thread;
-            }
-            // wait for all threads to finish
-            for (auto& fi : fis) {
-                auto f = fi.get();
-                efs.push_back(f);
-            }
-
-            auto stop_fact = hrclock::now();
-            auto fact_seconds = duration_cast<milliseconds>(stop_fact - start_fact).count() / 1000.0;
-            LOG(INFO) << "Factorization time = " << fact_seconds << " sec";
-            LOG(INFO) << "Factorization speed = " << text_size_mb / fact_seconds << " MB/s";
-            LOG(INFO) << "Factorize done. (" << type() << ")";
+        if (left) { // last block
+            block_factor_data bfd(left);
+            t_coder coder;
+            bmap.m_block_offsets[bmap.m_block_offsets.size()-1] = encoded_stream.tellp();
+            auto num_factors = factorize_block(dict_idx,bfd,coder,encoded_stream,data_ptr,left);
+            bmap.m_block_factors[bmap.m_block_offsets.size()-1] = num_factors;
         }
-        LOG(INFO) << "Output factorization statistics";
-        output_encoding_stats(col, efs);
-
-        LOG(INFO) << "Merge factorized text blocks";
-        return merge_factor_encodings<factorizor<t_block_size,t_search_local_block_context, t_index, t_factor_selector, t_coder> >(col, efs);
+        
+        LOG(INFO) << "store blockmap";
+        bmap.bit_compress();
+        auto bmap_output_file = col.file_name(hash,block_map_uncompressed<true>::type());
+        sdsl::store_to_file(bmap,bmap_output_file);
     }
 };
