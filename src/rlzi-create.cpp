@@ -55,7 +55,6 @@ int main(int argc, const char* argv[])
         double FBPI = freqs_bits / double(col.num_postings);
         LOG(INFO) << "F-ZSTD-9 BPI = " << FBPI;
     }
-    /*
     {
         auto rlz_store_docs = typename rlz_store<dict_local_coverage_norms<>,
                              factorization_blocksize,
@@ -87,6 +86,7 @@ int main(int argc, const char* argv[])
         double FBPI = freqs_bits / double(col.num_postings);
         LOG(INFO) << "F-ZLIB-9 BPI = " << FBPI;
     }
+    /*
     {
         auto rlz_store_docs = typename rlz_store<dict_local_coverage_norms<>,
                              factorization_blocksize,

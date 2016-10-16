@@ -15,9 +15,9 @@ enum ACCESS_TYPE : int {
     RAND
 };
 
-template <uint32_t t_block_size = 1024,
+template <uint32_t t_block_size = 64,
     uint32_t t_estimator_block_size = 16,
-    uint32_t t_down_size = 512,
+    uint32_t t_down_size = 256,
     class t_norm = std::ratio<1, 2>,
     ACCESS_TYPE t_method = SEQ>
 class dict_local_coverage_norms {
@@ -34,7 +34,7 @@ public:
         uint32_t budget_mb = dict_size_bytes / (1024 * 1024);
 
         // check if we store it already and load it
-        auto down_size = 512;
+        auto down_size = t_down_size;
         auto start_total = hrclock::now();
         LOG(INFO) << "["<<name<<"] " << "create dictionary with budget " << budget_mb << " MiB";
         LOG(INFO) << "["<<name<<"] " << "block size = " << t_block_size;
@@ -197,6 +197,9 @@ public:
         sdsl::int_vector<8> dict(dict_size_bytes);
         {
             size_t current = 0;
+            for(size_t i=0;i<2048;i++) {
+                dict[current++] = 1;
+            }
             for (const auto& pb : picked_blocks) {
                 auto itr = input.begin() + pb;
                 for(size_t i=0;i<t_block_size;i++) {

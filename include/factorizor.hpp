@@ -63,7 +63,7 @@ struct factorizor {
         be.id = id;
         t_coder coder;
         block_factor_data bfd(block_size);
-        size_t block_per_20MiB = 20*1024*1024 / block_size;
+        size_t block_per_30MiB = 30*1024*1024 / block_size;
         size_t total_factors = 0;
         auto start = hrclock::now();
         {
@@ -75,7 +75,7 @@ struct factorizor {
                 total_factors += num_factors;
                 data_ptr += block_size;
 
-                if( (i+1) % block_per_20MiB == 0) {
+                if( (i+1) % block_per_30MiB == 0) {
                     auto now = hrclock::now();
                     auto enc_seconds = duration_cast<milliseconds>(now - start).count() / 1000.0;
                     size_t bytes_encoded = (i+1) * block_size;

@@ -50,7 +50,7 @@ public:
     rlz_store() = delete;
     rlz_store(rlz_store&&) = default;
     rlz_store& operator=(rlz_store&&) = default;
-    rlz_store(collection& col,std::string input_file,uint32_t dict_hash,uint32_t input_hash,std::string n)
+    rlz_store(collection& col,std::string input_file,std::string dict_file,uint32_t dict_hash,uint32_t input_hash,std::string n)
         : m_factored_data( col.file_name(dict_hash xor input_hash,factorization_strategy::type()) )
         , m_factor_stream(m_factored_data) // (1) mmap factored text
         , name(n)
@@ -64,8 +64,7 @@ public:
 
         // (3) load dictionary from disk
         LOG(INFO) << "["<<name<<"] " << "\tload dictionary";
-        auto dict_file_name = col.file_name(input_hash,dictionary_creation_strategy::type());
-        sdsl::load_from_file(m_dict,dict_file_name);
+        sdsl::load_from_file(m_dict,dict_file);
         {
             LOG(INFO) << "["<<name<<"] " << "\tdetermine text size";
             const sdsl::int_vector_mapper<8, std::ios_base::in> text(input_file,true);
