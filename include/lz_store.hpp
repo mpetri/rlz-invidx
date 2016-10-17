@@ -162,7 +162,7 @@ public:
             auto encoded_data = sdsl::write_out_buffer<1>::create(lz_output_file);
             bit_ostream<sdsl::int_vector_mapper<1> > encoded_stream(encoded_data);
             
-            auto num_blocks = input.size() / t_block_size;
+            size_t num_blocks = input.size() / t_block_size;
             auto left = input.size() % t_block_size;
             block_map_type bmap;
             if(left)

@@ -1,4 +1,6 @@
 *.lo
+./src/liblzma/.deps/*.Plo
+*.o
 .libs
 *.la
 libtool

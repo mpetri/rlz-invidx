@@ -102,7 +102,7 @@ struct factorizor {
         auto data_size = input.size();
         auto data_size_mb = data_size / (1024 * 1024.0);
         LOG(INFO) << "["<<name<<"] "  "factorize data - " << data_size_mb << " MiB (" << num_threads << " threads) - (" << type() << ")";
-        auto num_blocks = input.size() / t_block_size;
+        size_t num_blocks = input.size() / t_block_size;
         auto left = input.size() % t_block_size;
 
         block_map_uncompressed<true> bmap;

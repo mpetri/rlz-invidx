@@ -452,7 +452,7 @@ public:
         uint8_t* out_buf = os.cur_data8();
         uint64_t in_size = n * sizeof(T);
 
-        uint64_t out_buf_bytes = bits_required >> 3;
+        size_t out_buf_bytes = bits_required >> 3;
 
         auto ret =  brotli::BrotliCompressBuffer(brotli_params,
                          in_size,
@@ -485,7 +485,7 @@ public:
         const uint8_t* encoded_buffer = (const uint8_t*) in_buf;
         uint8_t* decoded_buffer = (uint8_t*)out_buf;
 
-        uint64_t dec_out_size = out_size;
+        size_t dec_out_size = out_size;
         auto ret = BrotliDecompressBuffer(in_size,
                                     encoded_buffer,
                                     &dec_out_size,
