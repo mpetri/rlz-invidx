@@ -1,0 +1,5 @@
+*.lo
+.libs
+*.la
+libtool
+config.log

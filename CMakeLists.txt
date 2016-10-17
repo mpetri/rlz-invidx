@@ -42,6 +42,7 @@ else()
 endif()
 
 add_subdirectory(external/sdsl-lite)
+add_subdirectory(external/googletest)
 
 add_subdirectory(external/bzip2-1.0.6)
 
