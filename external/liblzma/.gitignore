@@ -1,5 +1,9 @@
 *.lo
-./src/liblzma/.deps/*.Plo
+src/scripts/*
+*/Makefile
+config.h
+config.status
+Makefile
 *.o
 .libs
 *.la

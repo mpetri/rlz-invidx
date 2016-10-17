@@ -1,1 +1,0 @@
-cmd='/home/mpetri/dev/rlz-invidx/external/liblzma/configure;--prefix=/home/mpetri/dev/rlz-invidx/build/external/liblzma;--disable-xz;--disable-scripts;--disable-xzdec;--disable-lzmadec;--disable-lzmainfo;--disable-lzma-links'
