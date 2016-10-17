@@ -1,4 +1,6 @@
 *.lo
+src/liblzma/liblzma.pc
+po/Makefile.in
 tmp/*
 src/scripts/*
 */Makefile
