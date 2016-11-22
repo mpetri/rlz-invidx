@@ -429,14 +429,14 @@ int main(int argc, const char* argv[])
                 for(uint32_t i=1;i<list_len;i++) {
                     uint32_t cur = read_uint32(freqsfs);
                     prefix_sum += cur;
-                    buf[i] = prefix_sum - i;
+                    buf[i] = prefix_sum;
                     num_postings++;
                 }
                 // encode with interpolative 
                 const uint32_t* in = buf.data();
                 size_t written_bytes = 0;
                 {
-                    size_t upper_bound = prefix_sum-list_len+1;
+                    size_t upper_bound = prefix_sum+1;
                     bit_ostream<sdsl::bit_vector> ofs(out_buf);
                     ofs.put_gamma(upper_bound);
                     intp_coder.encode(ofs,in,list_len,upper_bound);
@@ -464,14 +464,14 @@ int main(int argc, const char* argv[])
                 for(uint32_t i=1;i<list_len;i++) {
                     uint32_t cur = read_uint32(freqsfs);
                     prefix_sum += cur;
-                    buf[i] = prefix_sum - i;
+                    buf[i] = prefix_sum;
                     num_postings++;
                 }
                 // encode with interpolative 
                 const uint32_t* in = buf.data();
                 size_t written_bytes = 0;
                 {
-                    size_t upper_bound = prefix_sum-list_len+1;
+                    size_t upper_bound = prefix_sum+1;
                     bit_ostream<sdsl::bit_vector> ofs(out_buf);
                     ofs.put_gamma(upper_bound);
                     ef_coder.encode(ofs,in,list_len,upper_bound);
