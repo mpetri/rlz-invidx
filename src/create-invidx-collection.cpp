@@ -291,7 +291,7 @@ int main(int argc, const char* argv[])
                 uint32_t* out = out_buf.data();
                 for(size_t i=0;i<list_len;i+=BLOCK_SIZE) {
                     size_t elems = BLOCK_SIZE;
-                    if( list_len - i < BLOCK_SIZE) elems = list_len = i;
+                    if( list_len - i < BLOCK_SIZE) elems = list_len - i;
                     if(elems != BLOCK_SIZE) { // write incomplete blocks as vbyte
                         for(size_t j=0;j<elems;j++) {
                             write_vbyte(docs_out,buf[i+j]);
