@@ -3,6 +3,7 @@
 #include "sdsl/int_vector_mapper.hpp"
 
 #include "simple16.h"
+#include "optpfor.h"
 
 #include "logging.hpp"
 INITIALIZE_EASYLOGGINGPP
@@ -22,7 +23,7 @@ void print_usage(const char* program)
     fprintf(stdout, "where\n");
     fprintf(stdout, "  -c <collection directory>  : the directory the collection is stored.\n");
     fprintf(stdout, "  -i <input prefix>          : the d2si input prefix.\n");
-    fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32|s16).\n");
+    fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32|s16|optpfor|intpol).\n");
     fprintf(stdout, "  -b                         : blocking.\n");
 };
 
@@ -48,7 +49,8 @@ parse_args(int argc, const char* argv[])
             break;
         case 'e':
             args.encoding = optarg;
-            if(args.encoding != "u32" && args.encoding != "vbyte" && args.encoding != "s16") {
+            if(args.encoding != "u32" && args.encoding != "vbyte" && args.encoding != "s16"
+              && args.encoding != "optpfor" && args.encoding != "intpol") {
                 std::cerr << "Inxid encoding command line parameter.\n";
                 print_usage(argv[0]);
                 exit(EXIT_FAILURE);
@@ -218,6 +220,54 @@ int main(int argc, const char* argv[])
                 docs_out.write(reinterpret_cast<char*>(out8),written_bytes);
                 list_id++;
             }
+        } else if(args.encoding == "optpfor") {
+            std::vector<uint32_t> buf;
+            std::vector<uint32_t> out_buf;
+            FastPForLib::OPTPFor<BLOCK_SIZE> optpfor_coder;
+            read_uint32(docfs);
+            uint32_t ndocs_d = read_uint32(docfs);
+            LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
+            LOG(INFO) << "encoding docid differences (blocking = " << args.blocking << ")";
+            while(!docfs.eof()) {
+                uint32_t list_len = read_uint32(docfs);
+                if(buf.size() < list_len) {
+                    buf.resize(list_len);
+                    out_buf.resize(2*buf.size());
+                }
+                uint32_t prev = read_uint32(docfs);
+                buf[0] = prev;
+                num_postings++;
+                for(uint32_t i=1;i<list_len;i++) {
+                    uint32_t cur = read_uint32(docfs);
+                    uint32_t gap = cur-prev;
+                    prev = cur;
+                    if(args.blocking == true && i % BLOCK_SIZE == 0) {
+                        gap = cur;
+                    }
+                    buf[i] = gap;
+                    num_postings++;
+                }
+                
+                // encode with optfor
+                const uint32_t* in = buf.data();
+                uint32_t* out = out_buf.data();
+                for(size_t i=0;i<list_len;i+=BLOCK_SIZE) {
+                    size_t elems = BLOCK_SIZE;
+                    if( list_len - i < BLOCK_SIZE) elems = list_len = i;
+                    if(elems != BLOCK_SIZE) { // write incomplete blocks as vbyte
+                        for(size_t j=0;j<elems;j++) {
+                            write_vbyte(docs_out,buf[i+j]);
+                        }
+                    } else { // write optpfor block
+                        size_t written_bytes = out_buf.size();
+                        auto cur_in = in + i;
+                        optpfor_coder.encodeBlock(cur_in,out,written_bytes);
+                        uint8_t* out8 = (uint8_t*) out_buf.data();
+                        docs_out.write(reinterpret_cast<char*>(out8),written_bytes);
+                    }
+                }
+                list_id++;
+            }
         } else {
             read_uint32(docfs);
             uint32_t ndocs_d = read_uint32(docfs);
@@ -284,6 +334,42 @@ int main(int argc, const char* argv[])
                 // write to file
                 uint8_t* out8 = (uint8_t*) out_buf.data();
                 freqs_out.write(reinterpret_cast<char*>(out8),written_bytes);
+                list_id++;
+            }
+        } else if(args.encoding == "optpfor") {
+            std::vector<uint32_t> buf;
+            std::vector<uint32_t> out_buf;
+            FastPForLib::OPTPFor<BLOCK_SIZE> optpfor_coder;
+            num_postings = 0;
+            while(!freqsfs.eof()) {
+                uint32_t list_len = read_uint32(freqsfs);
+                if(buf.size() < list_len) {
+                    buf.resize(list_len);
+                    out_buf.resize(2*buf.size());
+                }
+                for(uint32_t i=0;i<list_len;i++) {
+                    uint32_t freq = read_uint32(freqsfs);
+                    buf[i] = freq;
+                    num_postings++;
+                }
+                // encode with optfor
+                const uint32_t* in = buf.data();
+                uint32_t* out = out_buf.data();
+                for(size_t i=0;i<list_len;i+=BLOCK_SIZE) {
+                    size_t elems = BLOCK_SIZE;
+                    if( list_len - i < BLOCK_SIZE) elems = list_len = i;
+                    if(elems != BLOCK_SIZE) { // write incomplete blocks as vbyte
+                        for(size_t j=0;j<elems;j++) {
+                            write_vbyte(freqs_out,buf[i+j]);
+                        }
+                    } else { // write optpfor block
+                        size_t written_bytes = out_buf.size();
+                        auto cur_in = in + i;
+                        optpfor_coder.encodeBlock(cur_in,out,written_bytes);
+                        uint8_t* out8 = (uint8_t*) out_buf.data();
+                        freqs_out.write(reinterpret_cast<char*>(out8),written_bytes);
+                    }
+                }
                 list_id++;
             }
         } else {
