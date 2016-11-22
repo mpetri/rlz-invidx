@@ -682,4 +682,97 @@ public:
     }
 };
 
+
+struct interpolative {
+private:
+    template <class t_bit_ostream>
+    inline void write_center_mid(t_bit_ostream& os, uint64_t val,uint64_t u) const {
+        if(u==1) return;
+        auto b = sdsl::bits::hi(u-1) + 1ULL;
+        auto d = 2ULL*u - (1ULL << b);
+        val = val + (u-d/2);
+        if(val>u) val -= u;
+        uint64_t m = (1ULL << b) - u;
+        if(val<=m) {
+            os.put_int_no_size_check(val-1,b-1);
+        } else {
+            val += m;
+            os.put_int_no_size_check((val-1)>>1,b-1);
+            os.put_int_no_size_check((val-1)&1,1);
+        }
+    }
+    template <class t_bit_istream>
+    inline uint64_t read_center_mid(t_bit_istream& is,uint64_t u) const {
+        auto b = u == 1 ? 0 : sdsl::bits::hi(u-1) + 1ULL;
+        auto d = 2ULL*u - (1ULL << b);
+        uint64_t val = 1;
+        if(u != 1) {
+            uint64_t m = (1ULL << b) - u;
+            val = is.get_int(b-1)+1;
+            if (val>m) {
+                val = (2ULL*val + is.get_int(1)) - m - 1;
+            }
+        }
+        val = val + d/2;
+        if (val>u) val -= u;
+        return val;
+    }
+    
+    template <class t_bit_ostream, class T>
+    inline void encode_interpolative(t_bit_ostream& os, T* in_buf, size_t n, size_t low,size_t high) const {
+        if (n==0) return;
+        size_t h = (n+1) >> 1;
+        size_t n1 = h-1;
+        size_t n2 = n-h;
+        uint64_t v = in_buf[h-1]+1; // we don't encode 0
+        write_center_mid(os,v - low-n1+1,high - n2 - low - n1 + 1);
+        encode_interpolative(os,in_buf,n1,low,v-1);
+        encode_interpolative(os,in_buf+h,n2,v+1,high);
+    }
+
+    template <class t_bit_istream, class T>
+    inline void decode_interpolative(t_bit_istream& is, T* out_buf, size_t n, size_t low,size_t high) const {
+        if (n==0) return;
+        size_t h = (n+1) >> 1;
+        size_t n1 = h-1;
+        size_t n2 = n-h;
+        uint64_t v = low + n1 - 1 + read_center_mid(is,high - n2 - low - n1 + 1);
+        out_buf[h-1] = v-1; // we don't encode 0
+        if(n1) decode_interpolative(is,out_buf,n1,low,v-1);
+        if(n2) decode_interpolative(is,out_buf+h,n2,v+1,high);
+    }
+public:
+    static std::string type()
+    {
+        return "ip";
+    }
+
+    template <class T>
+    inline uint64_t determine_size(T* in_buf, size_t n, size_t u) const
+    {
+        bit_nullstream bns;
+        encode(bns,in_buf,n,u);
+        return bns.tellp();
+    }
+
+
+    template <class t_bit_ostream, class T>
+    inline void encode(t_bit_ostream& os, T* in_buf, size_t n, size_t u) const
+    {
+        os.expand_if_needed(n*(sdsl::bits::hi(u+1)+1));
+        size_t low = 1;
+        size_t high = u+1;
+        encode_interpolative(os,in_buf,n,low,high);
+    }
+
+    template <class t_bit_istream, class T>
+    inline void decode(const t_bit_istream& is, T* out_buf, size_t n, size_t u) const
+    {
+        size_t low = 1;
+        size_t high = u+1;
+        decode_interpolative(is,out_buf,n,low,high);
+    }
+};
+
+
 }

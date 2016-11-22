@@ -1,6 +1,8 @@
 
 #include "collection.hpp"
 #include "sdsl/int_vector_mapper.hpp"
+#include "bit_coders.hpp"
+#include "bit_streams.hpp"
 
 #include "simple16.h"
 #include "optpfor.h"
@@ -9,6 +11,9 @@
 INITIALIZE_EASYLOGGINGPP
 
 const uint32_t BLOCK_SIZE = 128;
+// need an upper bound for the prefix sum of the frequencies in a list 
+// currently we use list_len * MAX_FREQ_BOUND
+const uint32_t MAX_FREQ_BOUND = 128;
 
 typedef struct cmdargs {
     std::string collection_dir;
@@ -23,7 +28,7 @@ void print_usage(const char* program)
     fprintf(stdout, "where\n");
     fprintf(stdout, "  -c <collection directory>  : the directory the collection is stored.\n");
     fprintf(stdout, "  -i <input prefix>          : the d2si input prefix.\n");
-    fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32|s16|optpfor|intpol).\n");
+    fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32|s16|optpfor|interpolative).\n");
     fprintf(stdout, "  -b                         : blocking.\n");
 };
 
@@ -50,7 +55,7 @@ parse_args(int argc, const char* argv[])
         case 'e':
             args.encoding = optarg;
             if(args.encoding != "u32" && args.encoding != "vbyte" && args.encoding != "s16"
-              && args.encoding != "optpfor" && args.encoding != "intpol") {
+              && args.encoding != "optpfor" && args.encoding != "interpolative") {
                 std::cerr << "Inxid encoding command line parameter.\n";
                 print_usage(argv[0]);
                 exit(EXIT_FAILURE);
@@ -213,8 +218,41 @@ int main(int argc, const char* argv[])
                 // encode with s16 
                 const uint32_t* in = buf.data();
                 uint32_t* out = out_buf.data();
-                size_t written_bytes = out_buf.size();
-                s16coder.encodeArray(in,list_len,out,written_bytes);
+                size_t written_ints = out_buf.size();
+                s16coder.encodeArray(in,list_len,out,written_ints);
+                size_t written_bytes = written_ints * sizeof(uint32_t);
+                // write to file
+                uint8_t* out8 = (uint8_t*) out_buf.data();
+                docs_out.write(reinterpret_cast<char*>(out8),written_bytes);
+                list_id++;
+            }
+        } else if(args.encoding == "interpolative") {
+            read_uint32(docfs);
+            uint32_t ndocs_d = read_uint32(docfs);
+            std::vector<uint32_t> buf;
+            sdsl::bit_vector out_buf;
+            coder::interpolative intp_coder;
+            num_postings = 0;
+            while(!docfs.eof()) {
+                uint32_t list_len = read_uint32(docfs);
+                if(buf.size() < list_len) {
+                    buf.resize(list_len);
+                    out_buf.resize(2*32*buf.size());
+                }
+                for(uint32_t i=0;i<list_len;i++) {
+                    uint32_t cur = read_uint32(docfs);
+                    buf[i] = cur+1; // in interpolative coder we assume we don't encode 0 but docid 0 exists
+                    num_postings++;
+                }
+                // encode with interpolative 
+                const uint32_t* in = buf.data();
+                size_t written_bytes = 0;
+                {
+                    size_t upper_bound = ndocs_d;
+                    bit_ostream<sdsl::bit_vector> ofs(out_buf);
+                    intp_coder.encode(ofs,in,list_len,upper_bound);
+                    written_bytes = (ofs.tellp()/8)+1;
+                }
                 // write to file
                 uint8_t* out8 = (uint8_t*) out_buf.data();
                 docs_out.write(reinterpret_cast<char*>(out8),written_bytes);
@@ -223,7 +261,7 @@ int main(int argc, const char* argv[])
         } else if(args.encoding == "optpfor") {
             std::vector<uint32_t> buf;
             std::vector<uint32_t> out_buf;
-            FastPForLib::OPTPFor<BLOCK_SIZE> optpfor_coder;
+            FastPForLib::OPTPFor<BLOCK_SIZE/32> optpfor_coder;
             read_uint32(docfs);
             uint32_t ndocs_d = read_uint32(docfs);
             LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
@@ -259,9 +297,10 @@ int main(int argc, const char* argv[])
                             write_vbyte(docs_out,buf[i+j]);
                         }
                     } else { // write optpfor block
-                        size_t written_bytes = out_buf.size();
+                        size_t written_ints = out_buf.size();
                         auto cur_in = in + i;
-                        optpfor_coder.encodeBlock(cur_in,out,written_bytes);
+                        optpfor_coder.encodeBlock(cur_in,out,written_ints);
+                        size_t written_bytes = written_ints * sizeof(uint32_t);
                         uint8_t* out8 = (uint8_t*) out_buf.data();
                         docs_out.write(reinterpret_cast<char*>(out8),written_bytes);
                     }
@@ -329,8 +368,43 @@ int main(int argc, const char* argv[])
                 // encode with s16 
                 const uint32_t* in = buf.data();
                 uint32_t* out = out_buf.data();
-                size_t written_bytes = out_buf.size();
-                s16coder.encodeArray(in,list_len,out,written_bytes);
+                size_t written_ints = out_buf.size();
+                s16coder.encodeArray(in,list_len,out,written_ints);
+                size_t written_bytes = written_ints * sizeof(uint32_t);
+                // write to file
+                uint8_t* out8 = (uint8_t*) out_buf.data();
+                freqs_out.write(reinterpret_cast<char*>(out8),written_bytes);
+                list_id++;
+            }
+        } else if(args.encoding == "interpolative") {
+            std::vector<uint32_t> buf;
+            sdsl::bit_vector out_buf;
+            coder::interpolative intp_coder;
+            num_postings = 0;
+            while(!freqsfs.eof()) {
+                uint32_t list_len = read_uint32(freqsfs);
+                if(buf.size() < list_len) {
+                    buf.resize(list_len);
+                    out_buf.resize(2*32*buf.size());
+                }
+                uint32_t prefix_sum = read_uint32(freqsfs);
+                buf[0] = prefix_sum;
+                for(uint32_t i=1;i<list_len;i++) {
+                    uint32_t cur = read_uint32(freqsfs);
+                    prefix_sum += cur;
+                    buf[i] = prefix_sum;
+                    num_postings++;
+                }
+                // encode with interpolative 
+                const uint32_t* in = buf.data();
+                size_t written_bytes = 0;
+                {
+                    const uint32_t max_freq = 256;
+                    size_t upper_bound = list_len*max_freq;
+                    bit_ostream<sdsl::bit_vector> ofs(out_buf);
+                    intp_coder.encode(ofs,in,list_len,upper_bound);
+                    written_bytes = (ofs.tellp()/8)+1;
+                }
                 // write to file
                 uint8_t* out8 = (uint8_t*) out_buf.data();
                 freqs_out.write(reinterpret_cast<char*>(out8),written_bytes);
@@ -339,7 +413,7 @@ int main(int argc, const char* argv[])
         } else if(args.encoding == "optpfor") {
             std::vector<uint32_t> buf;
             std::vector<uint32_t> out_buf;
-            FastPForLib::OPTPFor<BLOCK_SIZE> optpfor_coder;
+            FastPForLib::OPTPFor<BLOCK_SIZE/32> optpfor_coder;
             num_postings = 0;
             while(!freqsfs.eof()) {
                 uint32_t list_len = read_uint32(freqsfs);
@@ -357,15 +431,16 @@ int main(int argc, const char* argv[])
                 uint32_t* out = out_buf.data();
                 for(size_t i=0;i<list_len;i+=BLOCK_SIZE) {
                     size_t elems = BLOCK_SIZE;
-                    if( list_len - i < BLOCK_SIZE) elems = list_len = i;
+                    if( list_len - i < BLOCK_SIZE) elems = list_len - i;
                     if(elems != BLOCK_SIZE) { // write incomplete blocks as vbyte
                         for(size_t j=0;j<elems;j++) {
                             write_vbyte(freqs_out,buf[i+j]);
                         }
                     } else { // write optpfor block
-                        size_t written_bytes = out_buf.size();
+                        size_t written_ints = out_buf.size();
                         auto cur_in = in + i;
-                        optpfor_coder.encodeBlock(cur_in,out,written_bytes);
+                        optpfor_coder.encodeBlock(cur_in,out,written_ints);
+                        size_t written_bytes = written_ints * sizeof(uint32_t);
                         uint8_t* out8 = (uint8_t*) out_buf.data();
                         freqs_out.write(reinterpret_cast<char*>(out8),written_bytes);
                     }
