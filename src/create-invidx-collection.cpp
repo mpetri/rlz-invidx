@@ -22,7 +22,7 @@ void print_usage(const char* program)
     fprintf(stdout, "where\n");
     fprintf(stdout, "  -c <collection directory>  : the directory the collection is stored.\n");
     fprintf(stdout, "  -i <input prefix>          : the d2si input prefix.\n");
-    fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32).\n");
+    fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32|s16).\n");
     fprintf(stdout, "  -b                         : blocking.\n");
 };
 
@@ -48,7 +48,7 @@ parse_args(int argc, const char* argv[])
             break;
         case 'e':
             args.encoding = optarg;
-            if(args.encoding != "u32" && args.encoding != "vbyte") {
+            if(args.encoding != "u32" && args.encoding != "vbyte" && args.encoding != "s16") {
                 std::cerr << "Inxid encoding command line parameter.\n";
                 print_usage(argv[0]);
                 exit(EXIT_FAILURE);
