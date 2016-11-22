@@ -436,8 +436,7 @@ int main(int argc, const char* argv[])
                 const uint32_t* in = buf.data();
                 size_t written_bytes = 0;
                 {
-                    const uint32_t max_freq = 256;
-                    size_t upper_bound = list_len*max_freq;
+                    size_t upper_bound = prefix_sum+1;
                     bit_ostream<sdsl::bit_vector> ofs(out_buf);
                     intp_coder.encode(ofs,in,list_len,upper_bound);
                     written_bytes = (ofs.tellp()/8)+1;
@@ -471,10 +470,8 @@ int main(int argc, const char* argv[])
                 const uint32_t* in = buf.data();
                 size_t written_bytes = 0;
                 {
-                    const uint32_t max_freq = 256;
-                    size_t upper_bound = list_len*max_freq;
                     bit_ostream<sdsl::bit_vector> ofs(out_buf);
-                    ef_coder.encode(ofs,in,list_len,upper_bound);
+                    ef_coder.encode(ofs,in,list_len,prefix_sum+1);
                     written_bytes = (ofs.tellp()/8)+1;
                 }
                 // write to file
