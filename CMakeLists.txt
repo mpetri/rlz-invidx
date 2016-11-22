@@ -42,6 +42,7 @@ else()
 endif()
 
 add_subdirectory(external/sdsl-lite)
+add_subdirectory(external/googletest)
 
 add_subdirectory(external/bzip2-1.0.6)
 
@@ -107,7 +108,7 @@ add_executable(lzi-create.x src/lzi-create.cpp)
 target_link_libraries(lzi-create.x sdsl pthread divsufsort divsufsort64 zlib lz4 bzip2 brotli lzma zstd)
 
 add_executable(create-invidx-collection.x src/create-invidx-collection.cpp)
-target_link_libraries(create-invidx-collection.x sdsl pthread zlib lz4 bzip2 brotli lzma zstd FastPFor)
+target_link_libraries(create-invidx-collection.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)
 
 add_executable(unit-tests.x src/unit-tests.cpp)
 target_link_libraries(unit-tests.x sdsl pthread zlib gtest_main lz4 bzip2 brotli lzma zstd)

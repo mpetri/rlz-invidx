@@ -103,6 +103,7 @@ struct factor_itr_sa {
         size_t offset = 0;
 
         // ask the cache!
+        /*
         if (std::distance(itr, end) >= 3) {
             uint32_t two_gram = uint32_t(*itr) << 16 | uint32_t(*(itr + 1)) << 8 | uint32_t(*(itr + 2));
             sp = cache[two_gram * 2];
@@ -116,6 +117,7 @@ struct factor_itr_sa {
                 itr += 3;
             }
         }
+        */
 
         /* refine bounds as long as possible */
         while (itr != end && refine_bounds(sp, ep, *itr, offset)) {
@@ -171,7 +173,7 @@ struct dict_index_sa {
             }
 
             /* fix up some counts at the end */
-            counts[0] = 1;
+            //counts[0] = 1;
             cur_k_gram = uint32_t(text[text.size() - 2]) << 16 | uint32_t(text[text.size() - 1]) << 8 | uint32_t(text[text.size() - 1]);
             counts[cur_k_gram]++;
 

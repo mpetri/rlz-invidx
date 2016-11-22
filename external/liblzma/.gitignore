@@ -1,0 +1,14 @@
+*.lo
+src/liblzma/liblzma.pc
+po/Makefile.in
+tmp/*
+src/scripts/*
+*/Makefile
+config.h
+config.status
+Makefile
+*.o
+.libs
+*.la
+libtool
+config.log

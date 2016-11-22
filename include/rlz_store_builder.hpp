@@ -41,7 +41,7 @@ public:
         auto input_hash = utils::crc(input_file);
 
         // (1) create dictionary based on parametrized dictionary creation strategy if necessary
-        auto dict_file_name = col.file_name(input_hash,dictionary_creation_strategy::type());
+        auto dict_file_name = col.file_name(input_hash,dictionary_creation_strategy::type()) + "-" + std::to_string(dict_size_bytes);
         sdsl::int_vector<8> dict;
         if (rebuild || !utils::file_exists(dict_file_name)) {
             dict = dictionary_creation_strategy::create(input_file, dict_size_bytes,name);
@@ -64,7 +64,7 @@ public:
         auto stop = hrclock::now();
         LOG(INFO) << "["<<name<<"] " << "rlz construction complete. time = " << duration_cast<seconds>(stop - start).count() << " sec";
 
-        return rlz_store(col,input_file,dict_hash,input_hash,name);
+        return rlz_store(col,input_file,dict_file_name,dict_hash,input_hash,name);
     }
 private:
     bool rebuild = false;
