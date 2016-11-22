@@ -232,6 +232,8 @@ int main(int argc, const char* argv[])
             std::vector<uint32_t> buf;
             sdsl::bit_vector out_buf;
             coder::interpolative intp_coder;
+            LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
+            LOG(INFO) << "encoding docid differences (blocking = " << args.blocking << ")";
             num_postings = 0;
             while(!docfs.eof()) {
                 uint32_t list_len = read_uint32(docfs);
@@ -389,6 +391,7 @@ int main(int argc, const char* argv[])
                 }
                 uint32_t prefix_sum = read_uint32(freqsfs);
                 buf[0] = prefix_sum;
+                num_postings = 1;
                 for(uint32_t i=1;i<list_len;i++) {
                     uint32_t cur = read_uint32(freqsfs);
                     prefix_sum += cur;
