@@ -2,6 +2,8 @@
 #include "collection.hpp"
 #include "sdsl/int_vector_mapper.hpp"
 
+#include "simple16.h"
+
 #include "logging.hpp"
 INITIALIZE_EASYLOGGINGPP
 
@@ -147,63 +149,156 @@ int main(int argc, const char* argv[])
     std::string output_docids = args.collection_dir + "/" + DOCS_NAME;
     std::string output_freqs = args.collection_dir + "/" + FREQS_NAME;
     
-    uint64_t num_postings = 0;
-    bool vbyte = false;
-    if(args.encoding == "vbyte") vbyte = true;
-    
-    LOG(INFO) << "writing docids (vbyte=" << vbyte << ")";
+    uint64_t num_postings = 0;   
+    LOG(INFO) << "writing docids (encoding=" << args.encoding << ")";
     {
         std::ofstream docs_out(output_docids,std::ios::binary);
         std::ifstream docfs(input_docids, std::ios::binary);
-        
-        read_uint32(docfs);
-        uint32_t ndocs_d = read_uint32(docfs);
-        LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
         size_t list_id = 1;
-        LOG(INFO) << "encoding docid differences (blocking = " << args.blocking << ")";
-        while(!docfs.eof()) {
-            uint32_t list_len = read_uint32(docfs);
-            
-            uint32_t prev = read_uint32(docfs);
-            if(vbyte) write_vbyte(docs_out,prev);
-            else write_uint32(docs_out,prev);
-            
-            num_postings++;
-            for(uint32_t i=1;i<list_len;i++) {
-                uint32_t cur = read_uint32(docfs);
-                uint32_t gap = cur-prev;
-                prev = cur;
+        if(args.encoding == "vbyte") {
+            read_uint32(docfs);
+            uint32_t ndocs_d = read_uint32(docfs);
+            LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
+            LOG(INFO) << "encoding docid differences (blocking = " << args.blocking << ")";
+            while(!docfs.eof()) {
+                uint32_t list_len = read_uint32(docfs);
                 
-                if(args.blocking == true && i % BLOCK_SIZE == 0) {
-                    gap = cur;
-                }
+                uint32_t prev = read_uint32(docfs);
+                write_vbyte(docs_out,prev);
                 
-                if(vbyte) write_vbyte(docs_out,gap);
-                else write_uint32(docs_out,gap);
                 num_postings++;
+                for(uint32_t i=1;i<list_len;i++) {
+                    uint32_t cur = read_uint32(docfs);
+                    uint32_t gap = cur-prev;
+                    prev = cur;
+                    
+                    if(args.blocking == true && i % BLOCK_SIZE == 0) {
+                        gap = cur;
+                    }
+                    
+                    write_vbyte(docs_out,gap);
+                    num_postings++;
+                }
+                list_id++;
             }
-            list_id++;
+        } else if(args.encoding == "s16") {
+            std::vector<uint32_t> buf;
+            std::vector<uint32_t> out_buf;
+            FastPForLib::Simple16<0> s16coder;
+            read_uint32(docfs);
+            uint32_t ndocs_d = read_uint32(docfs);
+            LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
+            LOG(INFO) << "encoding docid differences (blocking = " << args.blocking << ")";
+            while(!docfs.eof()) {
+                uint32_t list_len = read_uint32(docfs);
+                if(buf.size() < list_len) {
+                    buf.resize(list_len);
+                    out_buf.resize(2*buf.size());
+                }
+                uint32_t prev = read_uint32(docfs);
+                buf[0] = prev;
+                num_postings++;
+                for(uint32_t i=1;i<list_len;i++) {
+                    uint32_t cur = read_uint32(docfs);
+                    uint32_t gap = cur-prev;
+                    prev = cur;
+                    if(args.blocking == true && i % BLOCK_SIZE == 0) {
+                        gap = cur;
+                    }
+                    buf[i] = gap;
+                    num_postings++;
+                }
+                // encode with s16 
+                const uint32_t* in = buf.data();
+                uint32_t* out = out_buf.data();
+                size_t written_bytes = out_buf.size();
+                s16coder.encodeArray(in,list_len,out,written_bytes);
+                // write to file
+                uint8_t* out8 = (uint8_t*) out_buf.data();
+                docs_out.write(reinterpret_cast<char*>(out8),written_bytes);
+                list_id++;
+            }
+        } else {
+            read_uint32(docfs);
+            uint32_t ndocs_d = read_uint32(docfs);
+            LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
+            LOG(INFO) << "encoding docid differences (blocking = " << args.blocking << ")";
+            while(!docfs.eof()) {
+                uint32_t list_len = read_uint32(docfs);
+                uint32_t prev = read_uint32(docfs);
+                write_uint32(docs_out,prev);
+                num_postings++;
+                for(uint32_t i=1;i<list_len;i++) {
+                    uint32_t cur = read_uint32(docfs);
+                    uint32_t gap = cur-prev;
+                    prev = cur;
+                    if(args.blocking == true && i % BLOCK_SIZE == 0) {
+                        gap = cur;
+                    }
+                    write_uint32(docs_out,gap);
+                    num_postings++;
+                }
+                list_id++;
+            }
         }
         LOG(INFO) << "processed terms = " << list_id;
         LOG(INFO) << "docid postings = " << num_postings;
     }
-    LOG(INFO) << "writing freqs (vbyte=" << vbyte << ")";
+    LOG(INFO) << "writing freqs (encoding=" << args.encoding << ")";
     {
+        size_t list_id = 1;
         std::ofstream freqs_out(output_freqs,std::ios::binary);
         std::ifstream freqsfs(input_freqs, std::ios::binary);
-        
-        size_t list_id = 1;
-        num_postings = 0;
-        while(!freqsfs.eof()) {
-            uint32_t list_len = read_uint32(freqsfs);
-            for(uint32_t i=0;i<list_len;i++) {
-                uint32_t freq = read_uint32(freqsfs);
-                if(vbyte) write_vbyte(freqs_out,freq);
-                else write_uint32(freqs_out,freq);
-                num_postings++;
+        if(args.encoding == "vbyte") {
+            num_postings = 0;
+            while(!freqsfs.eof()) {
+                uint32_t list_len = read_uint32(freqsfs);
+                for(uint32_t i=0;i<list_len;i++) {
+                    uint32_t freq = read_uint32(freqsfs);
+                    write_vbyte(freqs_out,freq);
+                    num_postings++;
+                }
+                list_id++;
             }
-            list_id++;
+        } else if(args.encoding == "s16") {
+            std::vector<uint32_t> buf;
+            std::vector<uint32_t> out_buf;
+            FastPForLib::Simple16<0> s16coder;
+            num_postings = 0;
+            while(!freqsfs.eof()) {
+                uint32_t list_len = read_uint32(freqsfs);
+                if(buf.size() < list_len) {
+                    buf.resize(list_len);
+                    out_buf.resize(2*buf.size());
+                }
+                for(uint32_t i=0;i<list_len;i++) {
+                    uint32_t freq = read_uint32(freqsfs);
+                    buf[i] = freq;
+                    num_postings++;
+                }
+                // encode with s16 
+                const uint32_t* in = buf.data();
+                uint32_t* out = out_buf.data();
+                size_t written_bytes = out_buf.size();
+                s16coder.encodeArray(in,list_len,out,written_bytes);
+                // write to file
+                uint8_t* out8 = (uint8_t*) out_buf.data();
+                freqs_out.write(reinterpret_cast<char*>(out8),written_bytes);
+                list_id++;
+            }
+        } else {
+            num_postings = 0;
+            while(!freqsfs.eof()) {
+                uint32_t list_len = read_uint32(freqsfs);
+                for(uint32_t i=0;i<list_len;i++) {
+                    uint32_t freq = read_uint32(freqsfs);
+                    write_uint32(freqs_out,freq);
+                    num_postings++;
+                }
+                list_id++;
+            }
         }
+
         LOG(INFO) << "processed terms = " << list_id;
         LOG(INFO) << "freq postings = " << num_postings;
     }
