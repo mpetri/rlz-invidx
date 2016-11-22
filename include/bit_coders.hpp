@@ -775,4 +775,87 @@ public:
 };
 
 
+struct elias_fano {
+public:
+    static std::string type()
+    {
+        return "ef";
+    }
+
+    template <class T>
+    inline uint64_t determine_size(T* , size_t n, size_t u) const
+    {
+        uint8_t logm = sdsl::bits::hi(n)+1;
+        uint8_t logu = sdsl::bits::hi(u)+1;
+        uint8_t width_low = 0;
+        if (logu < logm) {
+            width_low = 1;
+        } else {
+            if (logm == logu) logm--;
+            width_low = logu - logm;
+        }
+        return n*width_low + 2*n;
+    }
+
+    template <class t_bit_ostream, class T>
+    inline void encode(t_bit_ostream& os, T* in_buf, size_t n, size_t u) const
+    {
+        uint8_t logm = sdsl::bits::hi(n)+1;
+        uint8_t logu = sdsl::bits::hi(u)+1;
+        uint8_t width_low = 0;
+        if (logu < logm) {
+            width_low = 1;
+        } else {
+            if (logm == logu) logm--;
+            width_low = logu - logm;
+        }
+
+        // write low
+        os.expand_if_needed(n*width_low);
+        for (size_t i = 0; i < n; i++) {
+            os.put_int_no_size_check(in_buf[i], width_low);
+        }
+        // write high
+        size_t num_zeros = (u >> width_low);
+        os.expand_if_needed(num_zeros+n+1);
+        size_t last_high=0;
+        for (size_t i = 0; i < n; i++) {
+            auto position = in_buf[i];
+            size_t cur_high = position >> width_low;
+            os.put_unary_no_size_check(cur_high-last_high);
+            last_high = cur_high;
+        }
+    }
+
+    template <class t_bit_istream, class T>
+    inline void decode(const t_bit_istream& is, T* out_buf, size_t n, size_t u) const
+    {
+        uint8_t logm = sdsl::bits::hi(n)+1;
+        uint8_t logu = sdsl::bits::hi(u)+1;
+        uint8_t width_low = 0;
+
+        // read low 
+        if (logu < logm) {
+            width_low = 1;
+        } else {
+            if (logm == logu) logm--;
+            width_low = logu - logm;
+        }
+        for (size_t i = 0; i < n; i++) {
+            auto low = is.get_int(width_low);
+            out_buf[i] = low;
+        }
+        // read high
+        size_t last_high=0;
+        for (size_t i = 0; i < n; i++) {
+            auto cur_high = is.get_unary();
+            auto high = last_high + cur_high;
+            last_high = high;
+            out_buf[i] = (high << width_low) + out_buf[i];
+        }
+    }
+};
+
+
+
 }

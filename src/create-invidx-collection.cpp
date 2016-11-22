@@ -28,7 +28,7 @@ void print_usage(const char* program)
     fprintf(stdout, "where\n");
     fprintf(stdout, "  -c <collection directory>  : the directory the collection is stored.\n");
     fprintf(stdout, "  -i <input prefix>          : the d2si input prefix.\n");
-    fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32|s16|optpfor|interpolative).\n");
+    fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32|s16|optpfor|interpolative|ef).\n");
     fprintf(stdout, "  -b                         : blocking.\n");
 };
 
@@ -55,7 +55,7 @@ parse_args(int argc, const char* argv[])
         case 'e':
             args.encoding = optarg;
             if(args.encoding != "u32" && args.encoding != "vbyte" && args.encoding != "s16"
-              && args.encoding != "optpfor" && args.encoding != "interpolative") {
+              && args.encoding != "optpfor" && args.encoding != "interpolative" && args.encoding != "ef") {
                 std::cerr << "Inxid encoding command line parameter.\n";
                 print_usage(argv[0]);
                 exit(EXIT_FAILURE);
@@ -260,6 +260,40 @@ int main(int argc, const char* argv[])
                 docs_out.write(reinterpret_cast<char*>(out8),written_bytes);
                 list_id++;
             }
+        } else if(args.encoding == "ef") {
+            read_uint32(docfs);
+            uint32_t ndocs_d = read_uint32(docfs);
+            std::vector<uint32_t> buf;
+            sdsl::bit_vector out_buf;
+            coder::elias_fano ef_coder;
+            LOG(INFO) << "inverted index contains " << ndocs_d << " documents";
+            LOG(INFO) << "encoding docid differences (blocking = " << args.blocking << ")";
+            num_postings = 0;
+            while(!docfs.eof()) {
+                uint32_t list_len = read_uint32(docfs);
+                if(buf.size() < list_len) {
+                    buf.resize(list_len);
+                    out_buf.resize(2*32*buf.size());
+                }
+                for(uint32_t i=0;i<list_len;i++) {
+                    uint32_t cur = read_uint32(docfs);
+                    buf[i] = cur+1; // in interpolative coder we assume we don't encode 0 but docid 0 exists
+                    num_postings++;
+                }
+                // encode with interpolative 
+                const uint32_t* in = buf.data();
+                size_t written_bytes = 0;
+                {
+                    size_t upper_bound = ndocs_d;
+                    bit_ostream<sdsl::bit_vector> ofs(out_buf);
+                    ef_coder.encode(ofs,in,list_len,upper_bound);
+                    written_bytes = (ofs.tellp()/8)+1;
+                }
+                // write to file
+                uint8_t* out8 = (uint8_t*) out_buf.data();
+                docs_out.write(reinterpret_cast<char*>(out8),written_bytes);
+                list_id++;
+            }
         } else if(args.encoding == "optpfor") {
             std::vector<uint32_t> buf;
             std::vector<uint32_t> out_buf;
@@ -406,6 +440,41 @@ int main(int argc, const char* argv[])
                     size_t upper_bound = list_len*max_freq;
                     bit_ostream<sdsl::bit_vector> ofs(out_buf);
                     intp_coder.encode(ofs,in,list_len,upper_bound);
+                    written_bytes = (ofs.tellp()/8)+1;
+                }
+                // write to file
+                uint8_t* out8 = (uint8_t*) out_buf.data();
+                freqs_out.write(reinterpret_cast<char*>(out8),written_bytes);
+                list_id++;
+            }
+        } else if(args.encoding == "ef") {
+            std::vector<uint32_t> buf;
+            sdsl::bit_vector out_buf;
+            coder::elias_fano ef_coder;
+            num_postings = 0;
+            while(!freqsfs.eof()) {
+                uint32_t list_len = read_uint32(freqsfs);
+                if(buf.size() < list_len) {
+                    buf.resize(list_len);
+                    out_buf.resize(2*32*buf.size());
+                }
+                uint32_t prefix_sum = read_uint32(freqsfs);
+                buf[0] = prefix_sum;
+                num_postings = 1;
+                for(uint32_t i=1;i<list_len;i++) {
+                    uint32_t cur = read_uint32(freqsfs);
+                    prefix_sum += cur;
+                    buf[i] = prefix_sum;
+                    num_postings++;
+                }
+                // encode with interpolative 
+                const uint32_t* in = buf.data();
+                size_t written_bytes = 0;
+                {
+                    const uint32_t max_freq = 256;
+                    size_t upper_bound = list_len*max_freq;
+                    bit_ostream<sdsl::bit_vector> ofs(out_buf);
+                    ef_coder.encode(ofs,in,list_len,upper_bound);
                     written_bytes = (ofs.tellp()/8)+1;
                 }
                 // write to file
