@@ -83,6 +83,7 @@ include_directories("${PROJECT_SOURCE_DIR}/external/googletest/include"
                      ${CMAKE_HOME_DIRECTORY}/external/bzip2-1.0.6/
                      ${CMAKE_HOME_DIRECTORY}/external/mongoose/
                      ${CMAKE_HOME_DIRECTORY}/external/zstd/lib/
+                     ${CMAKE_HOME_DIRECTORY}/external/FastPFor/headers/
                     )
 
 link_directories(${CMAKE_BINARY_DIR}/external/liblzma/lib/ ${CMAKE_BINARY_DIR}/external/zstd/build/cmake/lib/)
@@ -96,6 +97,9 @@ file(GLOB BROTLI_SRCS_ENC_LIB ${BROTLI_DIR}/enc/*.cc)
 file(GLOB BROTLI_SRCS_DEC_LIB ${BROTLI_DIR}/dec/*.c)
 add_library(brotli ${BROTLI_SRCS_ENC_LIB} ${BROTLI_SRCS_DEC_LIB})
 
+include_directories(headers)
+add_subdirectory(external/FastPFor)
+
 add_executable(rlzi-create.x src/rlzi-create.cpp)
 target_link_libraries(rlzi-create.x sdsl pthread divsufsort divsufsort64 zlib lz4 bzip2 brotli lzma zstd)
 
@@ -103,7 +107,7 @@ add_executable(lzi-create.x src/lzi-create.cpp)
 target_link_libraries(lzi-create.x sdsl pthread divsufsort divsufsort64 zlib lz4 bzip2 brotli lzma zstd)
 
 add_executable(create-invidx-collection.x src/create-invidx-collection.cpp)
-target_link_libraries(create-invidx-collection.x sdsl pthread zlib lz4 bzip2 brotli lzma zstd)
+target_link_libraries(create-invidx-collection.x sdsl pthread zlib lz4 bzip2 brotli lzma zstd FastPFor)
 
 add_executable(unit-tests.x src/unit-tests.cpp)
 target_link_libraries(unit-tests.x sdsl pthread zlib gtest_main lz4 bzip2 brotli lzma zstd)
