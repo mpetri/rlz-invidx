@@ -438,6 +438,7 @@ int main(int argc, const char* argv[])
                 {
                     size_t upper_bound = prefix_sum+1;
                     bit_ostream<sdsl::bit_vector> ofs(out_buf);
+                    ofs.put_gamma(upper_bound);
                     intp_coder.encode(ofs,in,list_len,upper_bound);
                     written_bytes = (ofs.tellp()/8)+1;
                 }
@@ -470,8 +471,10 @@ int main(int argc, const char* argv[])
                 const uint32_t* in = buf.data();
                 size_t written_bytes = 0;
                 {
+                    size_t upper_bound = prefix_sum+1;
                     bit_ostream<sdsl::bit_vector> ofs(out_buf);
-                    ef_coder.encode(ofs,in,list_len,prefix_sum+1);
+                    ofs.put_gamma(upper_bound);
+                    ef_coder.encode(ofs,in,list_len,upper_bound);
                     written_bytes = (ofs.tellp()/8)+1;
                 }
                 // write to file

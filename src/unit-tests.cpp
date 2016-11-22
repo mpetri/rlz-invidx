@@ -10,6 +10,42 @@
 #include "logging.hpp"
 INITIALIZE_EASYLOGGINGPP
 
+TEST(bit_stream, gamma)
+{
+    size_t n = 20;
+    std::mt19937 gen(4711);
+    std::uniform_int_distribution<uint64_t> dis(1, 100000);
+
+    for (size_t i = 0; i < n; i++) {
+        size_t len = dis(gen);
+        std::vector<uint32_t> A(len);
+        for (size_t j = 0; j < len; j++)
+            A[j] = dis(gen);
+        std::sort(A.begin(), A.end());
+        auto last = std::unique(A.begin(), A.end());
+        auto n = std::distance(A.begin(), last);
+        coder::vbyte c;
+        sdsl::bit_vector bv;
+        {
+            bit_ostream<sdsl::bit_vector> os(bv);
+            for(size_t i=0;i<n;i++) {
+                os.put_gamma(A[i]);
+            }
+        }
+        std::vector<uint32_t> B(n);
+        {
+            bit_istream<sdsl::bit_vector> is(bv);
+            for(size_t i=0;i<n;i++) {
+                B[i] = is.get_gamma();
+            }
+        }
+        for (auto i = 0; i < n; i++) {
+            ASSERT_EQ(B[i], A[i]);
+        }
+    }
+}
+
+
 TEST(bit_stream, vbyte)
 {
     size_t n = 20;

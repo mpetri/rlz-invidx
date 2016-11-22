@@ -219,6 +219,17 @@ public:
         auto x = sdsl::bits::read_int_and_move(s, in_word_offset, (uint8_t)count);
         put_int_no_size_check(x, (uint8_t)count);
     }
+    
+    // write individual gamma encoded integer
+    inline void put_gamma(const uint64_t x)
+    {
+        uint64_t len = sdsl::bits::hi(x);
+        expand_if_needed(2*len+1);
+        uint64_t hb = uint64_t(1) << len;
+        put_unary_no_size_check(len);
+        put_int_no_size_check(x ^ hb, len);
+    }
+    
     // write individual unary encoded integer
     inline void put_unary(const uint64_t x)
     {
@@ -375,6 +386,9 @@ public:
         }
         sdsl::bits::write_int_and_move(data_ptr, 1ULL << x, in_word_offset, x + 1);
     }
+    
+    
+    
     uint64_t* data()
     {
         return m_bv.data();
@@ -433,6 +447,9 @@ public:
             ++itr;
         }
     }
+    
+    
+    
     inline value_type get_unary() const
     {
         value_type x = 0;
@@ -442,6 +459,14 @@ public:
         }
         return x + sdsl::bits::read_unary_and_move(data_ptr, in_word_offset);
     }
+    
+    inline value_type get_gamma() const
+    {
+        value_type len = get_unary();
+        value_type x = get_int(len);
+        return x | (uint64_t(1) << len);
+    }
+    
     template <class t_itr>
     void get_unary(t_itr itr, std::streamsize count) const
     {
