@@ -365,7 +365,7 @@ public:
     template <class t_bit_ostream, class T>
     inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
     {
-        uint64_t bits_required = 32 + n * 512; // upper bound
+        uint32_t bits_required = 32ULL + n * 9ULL; // upper bound
         os.expand_if_needed(bits_required);
         os.align8(); // align to bytes if needed
 
@@ -375,7 +375,7 @@ public:
 
         /* encode */
         uint8_t* out_buf = os.cur_data8();
-        uint64_t in_size = n * sizeof(T);
+        uint32_t in_size = n * sizeof(T);
 
         uint32_t written_bytes = bits_required >> 3;
         auto ret = BZ2_bzBuffToBuffCompress((char*)out_buf, &written_bytes,
@@ -534,16 +534,16 @@ public:
     template <class t_bit_ostream, class T>
     inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
     {
-        uint64_t bits_required = 2048 + n * 256; // upper bound
+        uint64_t bits_required = 2048ULL + n * 256ULL; // upper bound
         os.expand_if_needed(bits_required);
         os.align8(); // align to bytes if needed
 
         /* space for writing the encoding size */
-        uint32_t* out_size = (uint32_t*)os.cur_data8();
-        os.skip(32);
+        uint64_t* out_size = (uint64_t*)os.cur_data8();
+        os.skip(64);
 
         /* init compressor */
-        uint32_t osize = bits_required >> 3;
+        uint64_t osize = bits_required >> 3;
         uint8_t* out_buf = os.cur_data8();
         uint64_t in_size = n * sizeof(T);
         strm_enc.next_in = (uint8_t*)in_buf;
@@ -570,7 +570,7 @@ public:
             out_buf += written_bytes;
         }
 
-        *out_size = (uint32_t)total_written_bytes;
+        *out_size = (uint64_t)total_written_bytes;
         os.skip(total_written_bytes * 8); // skip over the written content
     }
 
@@ -580,9 +580,9 @@ public:
         is.align8(); // align to bytes if needed
 
         /* read the encoding size */
-        uint32_t* pin_size = (uint32_t*)is.cur_data8();
-        uint32_t in_size = *pin_size;
-        is.skip(32);
+        uint64_t* pin_size = (uint64_t*)is.cur_data8();
+        uint64_t in_size = *pin_size;
+        is.skip(64);
 
         /* setup decoder */
         auto in_buf = is.cur_data8();
@@ -633,19 +633,19 @@ public:
     template <class t_bit_ostream, class T>
     inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
     {
-        uint64_t bits_required = 32 + n * 128; // upper bound
+        uint64_t bits_required = 64ULL + n * 128ULL; // upper bound
         os.expand_if_needed(bits_required);
         os.align8(); // align to bytes if needed
 
         /* space for writing the encoding size */
-        uint32_t* out_size = (uint32_t*)os.cur_data8();
-        os.skip(32);
+        uint64_t* out_size = (uint64_t*)os.cur_data8();
+        os.skip(64);
 
         /* encode */
         uint8_t* out_buf = os.cur_data8();
         uint64_t in_size = n * sizeof(T);
 
-        uint32_t out_buf_bytes = bits_required >> 3;
+        uint64_t out_buf_bytes = bits_required >> 3;
         const uint8_t* in = (uint8_t*)in_buf;
         auto cSize =  ZSTD_compress(out_buf,out_buf_bytes,in,in_size,t_level);
 
@@ -653,8 +653,8 @@ public:
             LOG(FATAL) << "zstd-encode: error compressing! " << ZSTD_getErrorName(cSize);
         }
         // write the len. assume it fits in 32bits
-        uint32_t written_bytes = cSize;
-        *out_size = (uint32_t)written_bytes;
+        uint64_t written_bytes = cSize;
+        *out_size = written_bytes;
         os.skip(written_bytes * 8); // skip over the written content
     }
     template <class t_bit_istream, class T>
@@ -663,9 +663,9 @@ public:
         is.align8(); // align to bytes if needed
 
         /* read the encoding size */
-        uint32_t* pin_size = (uint32_t*)is.cur_data8();
-        uint32_t in_size = *pin_size;
-        is.skip(32);
+        uint64_t* pin_size = (uint64_t*)is.cur_data8();
+        uint64_t in_size = *pin_size;
+        is.skip(64);
 
         /* decode */
         auto in_buf = is.cur_data8();

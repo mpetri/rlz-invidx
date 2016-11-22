@@ -12,7 +12,7 @@
 
 using namespace std::chrono;
 
-template <class t_coder, uint32_t t_block_size>
+template <class t_coder, uint64_t t_block_size>
 class lz_store {
 public:
     using coder_type = t_coder;
@@ -49,7 +49,7 @@ public:
         LOG(INFO) << "[" << name << "] " << "loading lz store into memory (" << type() << ")";
         // (2) load the block map
         LOG(INFO) << "[" << name << "] " << "\tload block map";
-        sdsl::load_from_file(m_blockmap, col.file_name(hash,block_map_type::type()));
+        sdsl::load_from_file(m_blockmap, col.file_name(hash,type()+"-"+block_map_type::type()));
         {
             LOG(INFO) << "[" << name << "] " << "\tdetermine data size";
             const sdsl::int_vector_mapper<8, std::ios_base::in> data(input_file,true);
@@ -105,7 +105,7 @@ public:
     
 };
 
-template <class t_coder, uint32_t t_block_size>
+template <class t_coder, uint64_t t_block_size>
 class lz_store<t_coder,
     t_block_size>::builder {
 public:
@@ -171,7 +171,9 @@ public:
                 bmap.m_block_offsets.resize(num_blocks);
             
             const uint8_t* data_ptr = (const uint8_t*) input.data();
-            const size_t blocks_per_thread = (512 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
+            size_t blocks_per_thread = (256 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
+            if(blocks_per_thread == 0) blocks_per_thread = 1;
+
             size_t init_blocks = num_blocks;
             size_t offset_idx = 0;
             while (num_blocks) {
@@ -204,7 +206,7 @@ public:
                 data_ptr += left;
             }
             bmap.bit_compress();
-            auto bmap_output_file = col.file_name(hash,block_map_type::type());
+            auto bmap_output_file = col.file_name(hash,base_type::type()+"-"+block_map_type::type());
             sdsl::store_to_file(bmap,bmap_output_file);
             auto bytes_written = encoded_stream.tellp()  + (bmap.size_in_bytes()*8);
             auto stop_enc = hrclock::now();
