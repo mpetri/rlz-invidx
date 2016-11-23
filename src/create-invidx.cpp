@@ -29,7 +29,7 @@ parse_args(int argc, const char* argv[])
     int op;
     args.collection_dir = "";
     args.input_prefix = "";
-    while ((op = getopt(argc, (char* const*)argv, "c:i")) != -1) {
+    while ((op = getopt(argc, (char* const*)argv, "c:i:")) != -1) {
         switch (op) {
         case 'c':
             args.collection_dir = optarg;
