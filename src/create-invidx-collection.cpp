@@ -161,7 +161,8 @@ void prefixsum_list(std::vector<uint32_t>& list,size_t n,bool blocking) {
     }
 }
 
-void compress_doc_list(std::ofstream& output,std::vector<uint32_t>& list,size_t n,uint32_t ndocs_d,std::string encoding,std::vector<uint32_t>& tmp,bool blocking) {
+uint32_t
+compress_doc_list(std::ofstream& output,std::vector<uint32_t>& list,size_t n,uint32_t ndocs_d,std::string encoding,std::vector<uint32_t>& tmp,bool blocking) {
     if(encoding == "s16" || encoding == "vbyte" || encoding == "op4" || encoding == "u32" ) {
         dgap_list(list,n,blocking);
     }
@@ -267,9 +268,11 @@ void compress_doc_list(std::ofstream& output,std::vector<uint32_t>& list,size_t 
     // write output to file
     uint8_t* out8 = (uint8_t*) tmp.data();
     output.write(reinterpret_cast<char*>(out8),bytes_written);
+    return bytes_written;
 }
 
-void compress_freq_list(std::ofstream& output,std::vector<uint32_t>& list,size_t n,std::string encoding,std::vector<uint32_t>& tmp,bool blocking) {
+uint32_t
+compress_freq_list(std::ofstream& output,std::vector<uint32_t>& list,size_t n,std::string encoding,std::vector<uint32_t>& tmp,bool blocking) {
     if(encoding == "interp" || encoding == "ef") {
         prefixsum_list(list,n,blocking);
     }
@@ -383,6 +386,7 @@ void compress_freq_list(std::ofstream& output,std::vector<uint32_t>& list,size_t
     // write output to file
     uint8_t* out8 = (uint8_t*) tmp.data();
     output.write(reinterpret_cast<char*>(out8),bytes_written);
+    return bytes_written;
 }
 
 uint32_t compress_docs(std::string output_file,std::string input_file,std::string encoding,bool blocking) {
@@ -394,6 +398,7 @@ uint32_t compress_docs(std::string output_file,std::string input_file,std::strin
     uint32_t ndocs_d = read_uint32(input);
     std::vector<uint32_t> buf(ndocs_d);
     std::vector<uint32_t> tmp_buf(2*ndocs_d);
+    size_t written_bytes = 0;
     while(!input.eof()) {
         uint32_t list_len = read_uint32(input);
         for(uint32_t i=0;i<list_len;i++) {
@@ -401,10 +406,11 @@ uint32_t compress_docs(std::string output_file,std::string input_file,std::strin
             num_postings++;
         }
         list_id++;
-        compress_doc_list(output,buf,list_len,ndocs_d,encoding,tmp_buf,blocking);
+        written_bytes += compress_doc_list(output,buf,list_len,ndocs_d,encoding,tmp_buf,blocking);
     }
     LOG(INFO) << "processed terms = " << list_id;
     LOG(INFO) << "docid postings = " << num_postings;
+    LOG(INFO) << "docid BPI = " << double(written_bytes*8) / double(num_postings);
     return ndocs_d;
 }
 
@@ -416,6 +422,7 @@ uint32_t compress_freqs(std::string output_file,std::string input_file,std::stri
     std::ifstream input(input_file, std::ios::binary);
     std::vector<uint32_t> buf(ndocs_d);
     std::vector<uint32_t> tmp_buf(ndocs_d);
+    size_t written_bytes = 0;
     while(!input.eof()) {
         uint32_t list_len = read_uint32(input);
         for(uint32_t i=0;i<list_len;i++) {
@@ -423,10 +430,11 @@ uint32_t compress_freqs(std::string output_file,std::string input_file,std::stri
             num_postings++;
         }
         list_id++;
-        compress_freq_list(output,buf,list_len,encoding,tmp_buf,blocking);
+        written_bytes += compress_freq_list(output,buf,list_len,encoding,tmp_buf,blocking);
     }
     LOG(INFO) << "processed terms = " << list_id;
     LOG(INFO) << "freq postings = " << num_postings;
+    LOG(INFO) << "freq BPI = " << double(written_bytes*8) / double(num_postings);
     return num_postings;
 }
 
