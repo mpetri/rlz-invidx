@@ -112,3 +112,6 @@ target_link_libraries(create-invidx-collection.x sdsl pthread zlib lz4 bzip2 bro
 
 add_executable(unit-tests.x src/unit-tests.cpp)
 target_link_libraries(unit-tests.x sdsl pthread zlib gtest_main lz4 bzip2 brotli lzma zstd)
+
+add_executable(create-invidx.x src/create-invidx.cpp)
+target_link_libraries(create-invidx.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)

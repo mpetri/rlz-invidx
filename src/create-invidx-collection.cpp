@@ -73,12 +73,6 @@ parse_args(int argc, const char* argv[])
     return args;
 }
 
-inline uint32_t read_uint32(std::ifstream& ifs) {
-    std::uint32_t n;
-    ifs.read(reinterpret_cast<char*>(&n), sizeof n);
-    return n;
-}
-
 inline void write_uint8_t(uint8_t*& out,uint8_t x) {
     *out = x;
     out++;
@@ -167,6 +161,10 @@ uint32_t
 compress_doc_list(std::ofstream& output,std::vector<uint32_t>& list,size_t n,uint32_t ndocs_d,std::string encoding,std::vector<uint32_t>& tmp,bool blocking) {
     if(encoding == "s16" || encoding == "vbyte" || encoding == "op4" || encoding == "u32" ) {
         dgap_list(list,n,blocking);
+    }
+    
+    if(blocking) {
+        
     }
     
     // encode data
@@ -324,8 +322,6 @@ compress_freq_list(std::ofstream& output,std::vector<uint32_t>& list,size_t n,st
         if(blocking) {
             const uint32_t* in = list.data();
             sdsl::bit_vector tmp_bv;
-            
-            
             bit_ostream<sdsl::bit_vector> ofs(tmp_bv);
             for(size_t i=0;i<n;i+=BLOCK_SIZE) {
                 auto cur_in = in + i;

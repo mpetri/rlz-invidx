@@ -297,4 +297,11 @@ struct qgram_postings {
 };
     
 
+inline uint32_t read_uint32(std::ifstream& ifs) {
+    std::uint32_t n;
+    ifs.read(reinterpret_cast<char*>(&n), sizeof n);
+    return n;
+}
+
+
 } // end of util namespace
