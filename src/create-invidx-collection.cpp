@@ -395,7 +395,11 @@ uint32_t compress_docs(std::string output_file,std::string input_file,std::strin
     LOG(INFO) << "writing docids (encoding=" << encoding << ")";
     std::ofstream output(output_file,std::ios::binary);
     std::ifstream input(input_file, std::ios::binary);
+    LOG(INFO) << "docs input file " << input_file;
+    LOG(INFO) << "docs output file " << output_file;
+    read_uint32(input); // skip the 1
     uint32_t ndocs_d = read_uint32(input);
+    LOG(INFO) << "docs in col " << ndocs_d;
     std::vector<uint32_t> buf(ndocs_d);
     std::vector<uint32_t> tmp_buf(2*ndocs_d);
     size_t written_bytes = 0;
