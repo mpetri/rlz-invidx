@@ -89,6 +89,8 @@ struct inverted_index {
                 }
                 num_lists++;
                 lm.freq_offset = ffs.tellp();
+                LOG(INFO) << num_lists-1 << " doc offset = " << lm.doc_offset;
+                LOG(INFO) << num_lists-1 << " freq offset = " << lm.freq_offset;
                 t_freq_list::encode(ffs,buf,lm);
             }
         }
@@ -132,11 +134,14 @@ struct inverted_index {
         
         bit_istream<sdsl::bit_vector> docfs(m_doc_data);
         docfs.seek(lm.doc_offset);
+        LOG(INFO) << idx << " doc offset = " << lm.doc_offset;
         t_doc_list::decode(docfs,ld.doc_ids,lm);
         
         bit_istream<sdsl::bit_vector> freqfs(m_freq_data);
         freqfs.seek(lm.freq_offset);
         t_freq_list::decode(freqfs,ld.freqs,lm);
+        
+        LOG(INFO) << idx << " freq offset = " << lm.freq_offset;
         
         return ld;
     }
