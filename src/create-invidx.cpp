@@ -12,18 +12,14 @@ INITIALIZE_EASYLOGGINGPP
 typedef struct cmdargs {
     std::string collection_dir;
     std::string input_prefix;
-    std::string encoding;
-    bool blocking;
 } cmdargs_t;
 
 void print_usage(const char* program)
 {
-    fprintf(stdout, "%s -c <collection directory> -i <input prefix> -e <encoding> -b\n", program);
+    fprintf(stdout, "%s -c <collection directory> -i <input prefix>\n", program);
     fprintf(stdout, "where\n");
     fprintf(stdout, "  -c <collection directory>  : the directory the collection is stored.\n");
     fprintf(stdout, "  -i <input prefix>          : the d2si input prefix.\n");
-    fprintf(stdout, "  -e <encoding>              : encoding (vbyte|u32|s16|optpfor|interpolative|ef).\n");
-    fprintf(stdout, "  -b                         : blocking.\n");
 };
 
 cmdargs_t
@@ -33,27 +29,13 @@ parse_args(int argc, const char* argv[])
     int op;
     args.collection_dir = "";
     args.input_prefix = "";
-    args.encoding = "u32";
-    args.blocking = false;
-    while ((op = getopt(argc, (char* const*)argv, "c:i:e:b")) != -1) {
+    while ((op = getopt(argc, (char* const*)argv, "c:i")) != -1) {
         switch (op) {
         case 'c':
             args.collection_dir = optarg;
             break;
         case 'i':
             args.input_prefix = optarg;
-            break;
-        case 'b':
-            args.blocking = true;
-            break;
-        case 'e':
-            args.encoding = optarg;
-            if(args.encoding != "u32" && args.encoding != "vbyte" && args.encoding != "s16"
-              && args.encoding != "op4" && args.encoding != "interp" && args.encoding != "ef") {
-                std::cerr << "Inxid encoding command line parameter.\n";
-                print_usage(argv[0]);
-                exit(EXIT_FAILURE);
-            }
             break;
         }
     }
@@ -65,6 +47,31 @@ parse_args(int argc, const char* argv[])
     return args;
 }
 
+template<class t_doc_list,class t_freq_list>
+void build_and_verify(std::string input_prefix,std::string collection_dir)
+{
+    LOG(INFO) << "building inverted index";
+    inverted_index<t_doc_list,t_freq_list> invidx(input_prefix);
+    LOG(INFO) << "write inverted index";
+    invidx.write(collection_dir);
+    LOG(INFO) << "print inverted index stats";
+    invidx.stats();
+    LOG(INFO) << "load inverted index from disk";
+    inverted_index<t_doc_list,t_freq_list> invidx_loaded;
+    invidx_loaded.read(collection_dir);
+    LOG(INFO) << "verify loaded index";
+    if( invidx !=  invidx_loaded) {
+        LOG(ERROR) << "Error recovering index";
+    } else {
+        LOG(INFO) << "loaded index identical";
+    }
+    LOG(INFO) << "verify loaded index against input data";
+    if(! invidx_loaded.verify(input_prefix) ) {
+        LOG(ERROR) << "Error verifying index";
+    } else {
+        LOG(INFO) << "loaded index identical to input data";
+    }
+}
 
 int main(int argc, const char* argv[])
 {
@@ -72,55 +79,16 @@ int main(int argc, const char* argv[])
 
     cmdargs_t args = parse_args(argc, argv);
 
-    if(args.encoding == "vbyte")
+    // {
+    //     using doc_list_type = list_vbyte<true>;
+    //     using freq_list_type = list_vbyte<false>;
+    //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-vbyte");
+    // }
     {
-        // (1) build
-        LOG(INFO) << "building inverted index";
-        inverted_index<list_vbyte<true>,list_vbyte<false>> invidx(args.input_prefix);
-        LOG(INFO) << "DONE building inverted index";
-        invidx.write(args.collection_dir);
-        
-        // (2) print stats
-        invidx.stats();
-        
-        // (2) verify against in-memory
-        inverted_index<list_vbyte<true>,list_vbyte<false>> invidx_loaded;
-        invidx_loaded.read(args.collection_dir);
-        
-        if( invidx !=  invidx_loaded) {
-            LOG(ERROR) << "Error recovering index";
-        }
-        
-        // // (3) verify against original input
-        if(! invidx_loaded.verify(args.input_prefix) ) {
-            LOG(ERROR) << "Error verifying index";
-        }
+        using doc_list_type = list_simple16<true>;
+        using freq_list_type = list_simple16<false>;
+        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-simple16");
     }
     
-    if(args.encoding == "s16")
-    {
-        // (1) build
-        LOG(INFO) << "building inverted index";
-        inverted_index<list_simple16<true>,list_simple16<false>> invidx(args.input_prefix);
-        LOG(INFO) << "DONE building inverted index";
-        invidx.write(args.collection_dir);
-        
-        // (2) print stats
-        invidx.stats();
-        
-        // (2) verify against in-memory
-        inverted_index<list_simple16<true>,list_simple16<false>> invidx_loaded;
-        invidx_loaded.read(args.collection_dir);
-        
-        if( invidx !=  invidx_loaded) {
-            LOG(ERROR) << "Error recovering index";
-        }
-        
-        // // (3) verify against original input
-        if(! invidx_loaded.verify(args.input_prefix) ) {
-            LOG(ERROR) << "Error verifying index";
-        }
-    }
-
     return 0;
 }
