@@ -398,11 +398,11 @@ uint32_t compress_docs(std::string output_file,std::string input_file,std::strin
     std::ofstream output(output_file,std::ios::binary);
     std::ifstream input(input_file, std::ios::binary);
 
-    size_t input_file_size = 0;
+    std::streamoff input_file_size = 0;
     {
-        input_file_size = file.tellg();
+        input_file_size = input.tellg();
         input.seekg( 0, std::ios::end );
-        input_file_size = file.tellg() - input_file_size;
+        input_file_size = input.tellg() - input_file_size;
         input.seekg( 0, std::ios::beg );
     }
     LOG(INFO) << "docs input file " << input_file;
@@ -437,9 +437,19 @@ uint32_t compress_freqs(std::string output_file,std::string input_file,std::stri
     LOG(INFO) << "writing freqs (encoding=" << encoding << ")";
     std::ofstream output(output_file,std::ios::binary);
     std::ifstream input(input_file, std::ios::binary);
+    
+    std::streamoff input_file_size = 0;
+    {
+        input_file_size = input.tellg();
+        input.seekg( 0, std::ios::end );
+        input_file_size = input.tellg() - input_file_size;
+        input.seekg( 0, std::ios::beg );
+    }
+    
     std::vector<uint32_t> buf(ndocs_d);
     std::vector<uint32_t> tmp_buf(ndocs_d);
     size_t written_bytes = 0;
+    boost::progress_display pd(input_file_size);
     while(!input.eof()) {
         uint32_t list_len = read_uint32(input);
         for(uint32_t i=0;i<list_len;i++) {
@@ -448,6 +458,7 @@ uint32_t compress_freqs(std::string output_file,std::string input_file,std::stri
         }
         list_id++;
         written_bytes += compress_freq_list(output,buf,list_len,encoding,tmp_buf,blocking);
+        pd += (list_len+1)*sizeof(uint32_t);
     }
     LOG(INFO) << "processed terms = " << list_id;
     LOG(INFO) << "freq postings = " << num_postings;
