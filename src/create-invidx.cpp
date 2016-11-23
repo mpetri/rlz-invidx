@@ -72,9 +72,12 @@ int main(int argc, const char* argv[])
 
     cmdargs_t args = parse_args(argc, argv);
 
+    if(args.encoding == "vbyte")
     {
         // (1) build
+        LOG(INFO) << "building inverted index";
         inverted_index<list_vbyte<true>,list_vbyte<false>> invidx(args.input_prefix);
+        LOG(INFO) << "DONE building inverted index";
         invidx.write(args.collection_dir);
         
         // (2) print stats
@@ -83,15 +86,41 @@ int main(int argc, const char* argv[])
         // (2) verify against in-memory
         inverted_index<list_vbyte<true>,list_vbyte<false>> invidx_loaded;
         invidx_loaded.read(args.collection_dir);
-        invidx_loaded.stats();
         
         if( invidx !=  invidx_loaded) {
             LOG(ERROR) << "Error recovering index";
         }
         
         // // (3) verify against original input
-        invidx_loaded.verify(args.input_prefix);
+        if(! invidx_loaded.verify(args.input_prefix) ) {
+            LOG(ERROR) << "Error verifying index";
+        }
     }
     
+    if(args.encoding == "s16")
+    {
+        // (1) build
+        LOG(INFO) << "building inverted index";
+        inverted_index<list_simple16<true>,list_simple16<false>> invidx(args.input_prefix);
+        LOG(INFO) << "DONE building inverted index";
+        invidx.write(args.collection_dir);
+        
+        // (2) print stats
+        invidx.stats();
+        
+        // (2) verify against in-memory
+        inverted_index<list_simple16<true>,list_simple16<false>> invidx_loaded;
+        invidx_loaded.read(args.collection_dir);
+        
+        if( invidx !=  invidx_loaded) {
+            LOG(ERROR) << "Error recovering index";
+        }
+        
+        // // (3) verify against original input
+        if(! invidx_loaded.verify(args.input_prefix) ) {
+            LOG(ERROR) << "Error verifying index";
+        }
+    }
+
     return 0;
 }

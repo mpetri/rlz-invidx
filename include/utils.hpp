@@ -303,5 +303,23 @@ inline uint32_t read_uint32(std::ifstream& ifs) {
     return n;
 }
 
+inline void dgap_list(std::vector<uint32_t>& buf,size_t n) {
+    size_t prev = buf[0];
+    for(size_t i=1;i<n;i++) {
+        uint32_t cur = buf[i];
+        uint32_t gap = cur - prev;
+        prev = cur;
+        buf[i] = gap;
+    }
+}
+
+inline void undo_dgap_list(std::vector<uint32_t>& buf,size_t n) {
+    size_t prev = buf[0];
+    for(size_t i=1;i<n;i++) {
+        uint32_t cur = buf[i];
+        buf[i] = cur + prev;
+        prev = buf[i];
+    }
+}
 
 } // end of util namespace

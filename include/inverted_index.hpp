@@ -7,6 +7,7 @@
 #include "bit_streams.hpp"
 
 #include "list_vbyte.hpp"
+#include "list_simple16.hpp"
 
 struct list_data {
     size_t list_len;
