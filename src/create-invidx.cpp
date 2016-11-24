@@ -126,11 +126,15 @@ int main(int argc, const char* argv[])
         using freq_list_type = list_interp_block<128,true>;
         build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     }
+    // {
+    //     using doc_list_type = list_u32<true>;
+    //     using freq_list_type = list_u32<false>;
+    //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    // }
     {
-        using doc_list_type = list_u32<true>;
-        using freq_list_type = list_u32<false>;
+        using doc_list_type = list_vbyte_lz<true,128,coder::zstd<9>>;
+        using freq_list_type = list_vbyte_lz<false,128,coder::zstd<9>>;
         build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     }
-    
     return 0;
 }
