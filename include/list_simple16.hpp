@@ -10,9 +10,9 @@ struct list_simple16 {
     static void encode(bit_ostream<sdsl::bit_vector>& out,std::vector<uint32_t>& buf,const list_meta_data& lm) {
         static FastPForLib::Simple16<0> s16coder;
         if(t_dgap) utils::dgap_list(buf,lm.list_len);
-        out.expand_if_needed(1024+2*32*buf.size());
-        out.align64();
-        uint32_t* out32 = (uint32_t*) out.cur_data();
+        out.expand_if_needed(1024ULL+40ULL*buf.size());
+        out.align8();
+        uint32_t* out32 = (uint32_t*) out.cur_data8();
         const uint32_t* in = buf.data();
         size_t written_ints = buf.size();
         s16coder.encodeArray(in,lm.list_len,out32,written_ints);
@@ -22,8 +22,8 @@ struct list_simple16 {
     
     static void decode(bit_istream<sdsl::bit_vector>& in,std::vector<uint32_t>& buf,const list_meta_data& lm) {
         static FastPForLib::Simple16<0> s16coder;
-        in.align64();
-        const uint32_t* in32 = (const uint32_t*) in.cur_data();
+        in.align8();
+        const uint32_t* in32 = (const uint32_t*) in.cur_data8();
         uint32_t* out = buf.data();
         size_t read_ints = lm.list_len;
         s16coder.decodeArray(in32,lm.list_len,out,read_ints);

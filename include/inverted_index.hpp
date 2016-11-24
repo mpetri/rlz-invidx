@@ -15,11 +15,20 @@ struct list_data {
     std::vector<uint32_t> freqs;
     
     bool operator!=(const list_data& other) const {
-        if(list_len != other.list_len) return true;
+        if(list_len != other.list_len) {
+            LOG(ERROR) << "list len not equal";
+            return true;
+        }
         
         for(size_t i=0;i<list_len;i++) {
-            if(doc_ids[i] != other.doc_ids[i]) return true;
-            if(freqs[i] != other.freqs[i]) return true;
+            if(doc_ids[i] != other.doc_ids[i]) {
+                LOG(ERROR) << "doc id data not equal";
+                return true;
+            }
+            if(freqs[i] != other.freqs[i]) {
+                LOG(ERROR) << "freq data not equal";
+                return true;
+            }
         }
         
         return false;
@@ -89,8 +98,6 @@ struct inverted_index {
                 }
                 num_lists++;
                 lm.freq_offset = ffs.tellp();
-                LOG(INFO) << num_lists-1 << " doc offset = " << lm.doc_offset;
-                LOG(INFO) << num_lists-1 << " freq offset = " << lm.freq_offset;
                 t_freq_list::encode(ffs,buf,lm);
             }
         }
@@ -129,19 +136,17 @@ struct inverted_index {
         const auto& lm = m_meta_data.m_list_data[idx];
         
         ld.list_len = lm.list_len;
-        ld.doc_ids.resize(ld.list_len);
-        ld.freqs.resize(ld.list_len);
+        ld.doc_ids.resize(ld.list_len+1024);
+        ld.freqs.resize(ld.list_len+1024);
         
         bit_istream<sdsl::bit_vector> docfs(m_doc_data);
         docfs.seek(lm.doc_offset);
-        LOG(INFO) << idx << " doc offset = " << lm.doc_offset;
         t_doc_list::decode(docfs,ld.doc_ids,lm);
         
         bit_istream<sdsl::bit_vector> freqfs(m_freq_data);
         freqfs.seek(lm.freq_offset);
         t_freq_list::decode(freqfs,ld.freqs,lm);
         
-        LOG(INFO) << idx << " freq offset = " << lm.freq_offset;
         
         return ld;
     }
@@ -151,7 +156,10 @@ struct inverted_index {
     }
     
     bool operator!=(const inverted_index<t_doc_list,t_freq_list>& other) {
-        if(other.num_lists() != num_lists()) return true;
+        if(other.num_lists() != num_lists()) {
+            LOG(ERROR) << "num lists not equal";
+            return true;
+        }
         
         for(size_t i=0;i<num_lists();i++) {
             auto first = (*this)[i];
@@ -179,22 +187,33 @@ struct inverted_index {
             std::ifstream docs_in(input_docids, std::ios::binary);
             utils::read_uint32(docs_in); // skip the 1
             uint32_t num_docs = utils::read_uint32(docs_in);
-            if(num_docs != m_meta_data.m_num_docs) return false;
-            
+            if(num_docs != m_meta_data.m_num_docs) {
+                LOG(ERROR) << "num docs not equal";
+                return false;
+            }
+
             size_t num_lists = 0;
             while(!docs_in.eof()) {
                 uint32_t list_len = utils::read_uint32(docs_in);
-                if(list_len != m_meta_data.m_list_data[num_lists].list_len) return false;
-                
+                if(list_len != m_meta_data.m_list_data[num_lists].list_len) {
+                    LOG(ERROR) << "list lens not equal";
+                    return false;
+                }
                 auto cur_list = (*this)[num_lists];
                 
                 for(uint32_t i=0;i<list_len;i++) {
                     uint32_t cur_id = utils::read_uint32(docs_in);
-                    if(cur_list.doc_ids[i] != cur_id) return false;
+                    if(cur_list.doc_ids[i] != cur_id) {
+                        LOG(ERROR) << "doc ids not equal";
+                        return false;
+                    }
                 }
                 num_lists++;
             }
-            if(num_lists != m_meta_data.m_num_lists) return false;
+            if(num_lists != m_meta_data.m_num_lists) {
+                LOG(ERROR) << "num lists not equal";
+                return false;
+            }
         }
         // read and verify freqs
         {
@@ -204,11 +223,17 @@ struct inverted_index {
                 auto& lm = m_meta_data.m_list_data[num_lists];
                 auto cur_list = (*this)[num_lists];
                 size_t freq_list_len = utils::read_uint32(freqs_in);
-                if(freq_list_len != lm.list_len) return false;
+                if(freq_list_len != lm.list_len) {
+                    LOG(ERROR) << "freq list len not equal";
+                    return false;
+                }
                 uint64_t Ft = 0;
                 for(uint32_t i=0;i<lm.list_len;i++) {
                     uint32_t cur_freq = utils::read_uint32(freqs_in);
-                    if(cur_list.freqs[i] != cur_freq) return false;
+                    if(cur_list.freqs[i] != cur_freq) {
+                        LOG(ERROR) << "freq data not equal";
+                        return false;
+                    }
                     Ft += cur_freq;
                 }
                 if(Ft != lm.Ft) return false;

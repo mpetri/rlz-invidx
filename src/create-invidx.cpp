@@ -78,12 +78,11 @@ int main(int argc, const char* argv[])
     setup_logger(argc, argv);
 
     cmdargs_t args = parse_args(argc, argv);
-
-    // {
-    //     using doc_list_type = list_vbyte<true>;
-    //     using freq_list_type = list_vbyte<false>;
-    //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-vbyte");
-    // }
+    {
+        using doc_list_type = list_vbyte<true>;
+        using freq_list_type = list_vbyte<false>;
+        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-vbyte");
+    }
     {
         using doc_list_type = list_simple16<true>;
         using freq_list_type = list_simple16<false>;
