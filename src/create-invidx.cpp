@@ -116,6 +116,11 @@ int main(int argc, const char* argv[])
         using freq_list_type = list_ef<true>;
         build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     }
+    {
+        using doc_list_type = list_interp<false>;
+        using freq_list_type = list_interp<true>;
+        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    }
     
     return 0;
 }

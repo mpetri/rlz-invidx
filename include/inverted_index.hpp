@@ -10,6 +10,7 @@
 #include "list_simple16.hpp"
 #include "list_op4.hpp"
 #include "list_ef.hpp"
+#include "list_interp.hpp"
 
 #include "boost/progress.hpp"
 
