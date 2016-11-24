@@ -50,14 +50,15 @@ parse_args(int argc, const char* argv[])
 template<class t_doc_list,class t_freq_list>
 void build_and_verify(std::string input_prefix,std::string collection_dir)
 {
-    LOG(INFO) << "building inverted index";
-    inverted_index<t_doc_list,t_freq_list> invidx(input_prefix);
+    using invidx_type = inverted_index<t_doc_list,t_freq_list>;
+    LOG(INFO) << "building inverted index (" << invidx_type::type() << ")";
+    invidx_type invidx(input_prefix);
     LOG(INFO) << "write inverted index";
     invidx.write(collection_dir);
     LOG(INFO) << "print inverted index stats";
     invidx.stats();
     LOG(INFO) << "load inverted index from disk";
-    inverted_index<t_doc_list,t_freq_list> invidx_loaded;
+    invidx_type invidx_loaded;
     invidx_loaded.read(collection_dir);
     LOG(INFO) << "verify loaded index";
     if( invidx !=  invidx_loaded) {

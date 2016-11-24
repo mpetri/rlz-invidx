@@ -7,6 +7,10 @@
 
 template<bool t_dgap>
 struct list_simple16 {
+    static std::string type() {
+        return "simple16(dgap="+std::to_string(t_dgap)+")";
+    } 
+    
     static void encode(bit_ostream<sdsl::bit_vector>& out,std::vector<uint32_t>& buf,const list_meta_data& lm) {
         static FastPForLib::Simple16<0> s16coder;
         if(t_dgap) utils::dgap_list(buf,lm.list_len);

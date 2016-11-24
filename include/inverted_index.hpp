@@ -39,6 +39,10 @@ template<class t_doc_list,class t_freq_list>
 struct inverted_index {
     using size_type = uint64_t;
     
+    static std::string type() {
+        return "invidx<"+t_doc_list::type()+","+t_freq_list::type()+">";
+    }
+    
     inverted_index() {
         
     }
