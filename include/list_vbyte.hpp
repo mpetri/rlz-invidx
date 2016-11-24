@@ -5,6 +5,10 @@
 
 template<bool t_dgap>
 struct list_vbyte {
+    static std::string name() {
+        return "vbyte";
+    }
+    
     static std::string type() {
         return "vbyte(dgap="+std::to_string(t_dgap)+")";
     } 

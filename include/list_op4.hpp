@@ -7,6 +7,10 @@
 
 template<size_t t_block_size,bool t_dgap>
 struct list_op4 {
+    static std::string name() {
+        return "op4";
+    }
+    
     static std::string type() {
         return "op4(dgap="+std::to_string(t_dgap)+")";
     } 

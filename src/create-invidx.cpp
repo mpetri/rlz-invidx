@@ -95,17 +95,17 @@ int main(int argc, const char* argv[])
     {
         using doc_list_type = list_vbyte<true>;
         using freq_list_type = list_vbyte<false>;
-        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-vbyte");
+        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     }
     {
         using doc_list_type = list_simple16<true>;
         using freq_list_type = list_simple16<false>;
-        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-simple16");
+        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     }
     {
         using doc_list_type = list_op4<128,true>;
         using freq_list_type = list_op4<128,false>;
-        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-op4");
+        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     }
     return 0;
 }

@@ -7,6 +7,10 @@
 
 template<bool t_dgap>
 struct list_simple16 {
+    static std::string name() {
+        return "simple16";
+    }
+    
     static std::string type() {
         return "simple16(dgap="+std::to_string(t_dgap)+")";
     } 
