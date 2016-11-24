@@ -63,8 +63,8 @@ struct inverted_index {
             throw std::runtime_error("input prefix does not contain freqs file.");
         }
         
-        // read and compress docs
         {
+            LOG(INFO) << "read and compress doc ids";
             std::ifstream docs_in(input_docids, std::ios::binary);
             utils::read_uint32(docs_in); // skip the 1
             m_meta_data.m_num_docs = utils::read_uint32(docs_in);
@@ -89,8 +89,8 @@ struct inverted_index {
             }
             m_meta_data.m_num_lists = num_lists;
         }
-        // read and compress freqs
         {
+            LOG(INFO) << "read and compress freqs";
             std::ifstream freqs_in(input_freqs, std::ios::binary);
             bit_ostream<sdsl::bit_vector> ffs(m_freq_data);
             std::vector<uint32_t> buf(m_meta_data.m_num_docs);
