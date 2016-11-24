@@ -8,6 +8,7 @@
 
 #include "list_vbyte.hpp"
 #include "list_simple16.hpp"
+#include "list_op4.hpp"
 
 struct list_data {
     size_t list_len;
