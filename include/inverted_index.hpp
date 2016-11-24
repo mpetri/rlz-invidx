@@ -70,10 +70,15 @@ struct inverted_index {
             m_meta_data.m_num_docs = utils::read_uint32(docs_in);
        
             bit_ostream<sdsl::bit_vector> ofs(m_doc_data);
+            
+            // allocate some space first
+            size_t file_size = utils::file_size(input_docids);
+            ofs.expand_if_needed(file_size/11); // 3 bits per elem
+            
             std::vector<uint32_t> buf(m_meta_data.m_num_docs);
             list_meta_data lm;
             size_t num_lists = 0;
-            boost::progress_display pd(utils::file_size(input_docids));
+            boost::progress_display pd(file_size);
             pd += sizeof(uint32_t)*2;
             while(!docs_in.eof()) {
                 lm.list_len = utils::read_uint32(docs_in);
@@ -93,9 +98,14 @@ struct inverted_index {
             LOG(INFO) << "read and compress freqs";
             std::ifstream freqs_in(input_freqs, std::ios::binary);
             bit_ostream<sdsl::bit_vector> ffs(m_freq_data);
+            
+            // allocate some space first
+            size_t file_size = utils::file_size(input_freqs);
+            ffs.expand_if_needed(file_size/16); // 2 bits per elem
+            
             std::vector<uint32_t> buf(m_meta_data.m_num_docs);
             size_t num_lists = 0;
-            boost::progress_display pd(utils::file_size(input_freqs));
+            boost::progress_display pd(file_size);
             while(!freqs_in.eof()) {
                 auto& lm = m_meta_data.m_list_data[num_lists];
                 size_t freq_list_len = utils::read_uint32(freqs_in);
@@ -148,8 +158,8 @@ struct inverted_index {
         const auto& lm = m_meta_data.m_list_data[idx];
         
         ld.list_len = lm.list_len;
-        ld.doc_ids.resize(ld.list_len+1024);
-        ld.freqs.resize(ld.list_len+1024);
+        ld.doc_ids.resize(ld.list_len+1024); // overhead needed for FastPFor methods
+        ld.freqs.resize(ld.list_len+1024); // overhead needed for FastPFor methods
         
         bit_istream<sdsl::bit_vector> docfs(m_doc_data);
         docfs.seek(lm.doc_offset);
