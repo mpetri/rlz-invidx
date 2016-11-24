@@ -127,11 +127,11 @@ struct inverted_index {
     }
     
     void stats() {
-        LOG(INFO) << "NUM POSTINGS = " << m_meta_data.m_num_postings;
-        LOG(INFO) << "NUM DOCS = " << m_meta_data.m_num_docs;
-        LOG(INFO) << "NUM LISTS = " << m_meta_data.m_num_lists;
-        LOG(INFO) << "DOC BPI = " << double(m_doc_data.size()) / double(m_meta_data.m_num_postings);
-        LOG(INFO) << "FREQ BPI = " << double(m_freq_data.size()) / double(m_meta_data.m_num_postings);
+        LOG(INFO) << type() << " NUM POSTINGS = " << m_meta_data.m_num_postings;
+        LOG(INFO) << type() << " NUM DOCS = " << m_meta_data.m_num_docs;
+        LOG(INFO) << type() << " NUM LISTS = " << m_meta_data.m_num_lists;
+        LOG(INFO) << type() << " DOC BPI = " << double(m_doc_data.size()) / double(m_meta_data.m_num_postings);
+        LOG(INFO) << type() << " FREQ BPI = " << double(m_freq_data.size()) / double(m_meta_data.m_num_postings);
     }
     
     list_data operator[](size_type idx) const {
