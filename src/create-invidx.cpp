@@ -96,44 +96,54 @@ int main(int argc, const char* argv[])
 
     cmdargs_t args = parse_args(argc, argv);
     
-    {
-        using doc_list_type = list_vbyte<true>;
-        using freq_list_type = list_vbyte<false>;
-        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
-    }
-    {
-        using doc_list_type = list_simple16<true>;
-        using freq_list_type = list_simple16<false>;
-        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
-    }
-    {
-        using doc_list_type = list_op4<128,true>;
-        using freq_list_type = list_op4<128,false>;
-        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
-    }
-    {
-        using doc_list_type = list_ef<false>;
-        using freq_list_type = list_ef<true>;
-        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
-    }
-    {
-        using doc_list_type = list_interp<false>;
-        using freq_list_type = list_interp<true>;
-        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
-    }
-    {
-        using doc_list_type = list_interp_block<128,false>;
-        using freq_list_type = list_interp_block<128,true>;
-        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
-    }
+    // {
+    //     using doc_list_type = list_vbyte<true>;
+    //     using freq_list_type = list_vbyte<false>;
+    //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    // }
+    // {
+    //     using doc_list_type = list_simple16<true>;
+    //     using freq_list_type = list_simple16<false>;
+    //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    // }
+    // {
+    //     using doc_list_type = list_op4<128,true>;
+    //     using freq_list_type = list_op4<128,false>;
+    //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    // }
+    // {
+    //     using doc_list_type = list_ef<false>;
+    //     using freq_list_type = list_ef<true>;
+    //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    // }
+    // {
+    //     using doc_list_type = list_interp<false>;
+    //     using freq_list_type = list_interp<true>;
+    //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    // }
+    // {
+    //     using doc_list_type = list_interp_block<128,false>;
+    //     using freq_list_type = list_interp_block<128,true>;
+    //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    // }
     // {
     //     using doc_list_type = list_u32<true>;
     //     using freq_list_type = list_u32<false>;
     //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     // }
+    // {
+    //     using doc_list_type = list_vbyte_lz<true,128,coder::zstd<9>>;
+    //     using freq_list_type = list_vbyte_lz<false,128,coder::zstd<9>>;
+    //     build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    // }
     {
-        using doc_list_type = list_vbyte_lz<true,128,coder::zstd<9>>;
-        using freq_list_type = list_vbyte_lz<false,128,coder::zstd<9>>;
+        using doc_list_type = list_vbyte_lz<true,128,coder::lzma<6>>;
+        using freq_list_type = list_vbyte_lz<false,128,coder::lzma<6>>;
+        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    }
+    {
+        using doc_list_type = list_vbyte_lz<true,128,coder::bzip2<9>>;
+        using freq_list_type = list_vbyte_lz<false,128,coder::bzip2<9>>;
         build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     }
     return 0;
