@@ -11,6 +11,7 @@
 #include "list_op4.hpp"
 #include "list_ef.hpp"
 #include "list_interp.hpp"
+#include "list_interp_block.hpp"
 
 #include "boost/progress.hpp"
 

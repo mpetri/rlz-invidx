@@ -18,6 +18,7 @@ struct list_interp {
         if(t_prefix) utils::prefixsum_list(buf,n);
         const uint32_t* in = buf.data();
         interp_coder.encode(out,in,n,universe);
+        
     }
     
     static void decode(bit_istream<sdsl::bit_vector>& in,std::vector<uint32_t>& buf,size_t n,size_t universe) {
