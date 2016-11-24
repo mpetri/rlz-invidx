@@ -322,4 +322,13 @@ inline void undo_dgap_list(std::vector<uint32_t>& buf,size_t n) {
     }
 }
 
+std::streamoff file_size(std::string file) {
+    std::ifstream input(file, std::ios::binary);
+    std::streamoff fs = 0;
+    fs = input.tellg();
+    input.seekg( 0, std::ios::end );
+    fs = input.tellg() - fs;
+    return fs;
+}
+
 } // end of util namespace

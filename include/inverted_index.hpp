@@ -10,6 +10,8 @@
 #include "list_simple16.hpp"
 #include "list_op4.hpp"
 
+#include "boost/progress.hpp"
+
 struct list_data {
     size_t list_len;
     std::vector<uint32_t> doc_ids;
@@ -71,6 +73,8 @@ struct inverted_index {
             std::vector<uint32_t> buf(m_meta_data.m_num_docs);
             list_meta_data lm;
             size_t num_lists = 0;
+            boost::progress_display pd(utils::file_size(input_docids));
+            pd += sizeof(uint32_t)*2;
             while(!docs_in.eof()) {
                 lm.list_len = utils::read_uint32(docs_in);
                 for(uint32_t i=0;i<lm.list_len;i++) {
@@ -81,6 +85,7 @@ struct inverted_index {
                 lm.doc_offset = ofs.tellp();
                 t_doc_list::encode(ofs,buf,lm);
                 m_meta_data.m_list_data.push_back(lm);
+                pd += sizeof(uint32_t)*(lm.list_len+1);
             }
             m_meta_data.m_num_lists = num_lists;
         }
@@ -90,6 +95,7 @@ struct inverted_index {
             bit_ostream<sdsl::bit_vector> ffs(m_freq_data);
             std::vector<uint32_t> buf(m_meta_data.m_num_docs);
             size_t num_lists = 0;
+            boost::progress_display pd(utils::file_size(input_freqs));
             while(!freqs_in.eof()) {
                 auto& lm = m_meta_data.m_list_data[num_lists];
                 size_t freq_list_len = utils::read_uint32(freqs_in);
@@ -104,6 +110,7 @@ struct inverted_index {
                 num_lists++;
                 lm.freq_offset = ffs.tellp();
                 t_freq_list::encode(ffs,buf,lm);
+                pd += sizeof(uint32_t)*(lm.list_len+1);
             }
         }
     }
