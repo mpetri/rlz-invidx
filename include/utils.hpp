@@ -322,6 +322,26 @@ inline void undo_dgap_list(std::vector<uint32_t>& buf,size_t n) {
     }
 }
 
+
+inline void prefixsum_list(std::vector<uint32_t>& buf,size_t n) {
+    size_t prefixsum = buf[0];
+    for(size_t i=1;i<n;i++) {
+        uint32_t cur = buf[i];
+        prefixsum += cur;
+        buf[i] = prefixsum;
+    }
+}
+
+inline void undo_prefixsum_list(std::vector<uint32_t>& buf,size_t n) {
+    size_t prefixsum = buf[0];
+    for(size_t i=1;i<n;i++) {
+        uint32_t cur = buf[i];
+        buf[i] = cur - prefixsum;
+        prefixsum = cur;
+    }
+}
+
+
 std::streamoff file_size(std::string file) {
     std::ifstream input(file, std::ios::binary);
     std::streamoff fs = 0;

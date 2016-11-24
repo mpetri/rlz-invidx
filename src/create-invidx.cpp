@@ -69,20 +69,24 @@ void build_and_verify(std::string input_prefix,std::string collection_dir)
 {
     using invidx_type = inverted_index<t_doc_list,t_freq_list>;
     invidx_type invidx_loaded;
+    bool verify = false;
     if(!index_exists(collection_dir)) {
         LOG(INFO) << "building inverted index (" << invidx_type::type() << ")";
         invidx_type invidx(input_prefix);
         LOG(INFO) << "write inverted index";
         invidx.write(collection_dir);
+        verify = true;
     }
     LOG(INFO) << "load inverted index (" << invidx_type::type() << ")";
     invidx_loaded.read(collection_dir);
     invidx_loaded.stats();
-    LOG(INFO) << "verify loaded index against input data";
-    if(! invidx_loaded.verify(input_prefix) ) {
-        LOG(ERROR) << "Error verifying index";
-    } else {
-        LOG(INFO) << "[OK] loaded index identical to input data";
+    if(verify) {
+        LOG(INFO) << "verify loaded index against input data";
+        if(! invidx_loaded.verify(input_prefix) ) {
+            LOG(ERROR) << "Error verifying index";
+        } else {
+            LOG(INFO) << "[OK] loaded index identical to input data";
+        }
     }
 }
 
@@ -107,5 +111,11 @@ int main(int argc, const char* argv[])
         using freq_list_type = list_op4<128,false>;
         build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     }
+    {
+        using doc_list_type = list_ef<false>;
+        using freq_list_type = list_ef<true>;
+        build_and_verify<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    }
+    
     return 0;
 }

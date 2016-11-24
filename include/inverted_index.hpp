@@ -9,6 +9,7 @@
 #include "list_vbyte.hpp"
 #include "list_simple16.hpp"
 #include "list_op4.hpp"
+#include "list_ef.hpp"
 
 #include "boost/progress.hpp"
 
@@ -88,7 +89,7 @@ struct inverted_index {
                 }
                 num_lists++;
                 lm.doc_offset = ofs.tellp();
-                t_doc_list::encode(ofs,buf,lm);
+                t_doc_list::encode(ofs,buf,lm.list_len,m_meta_data.m_num_docs);
                 m_meta_data.m_list_data.push_back(lm);
                 pd += sizeof(uint32_t)*(lm.list_len+1);
             }
@@ -119,7 +120,7 @@ struct inverted_index {
                 }
                 num_lists++;
                 lm.freq_offset = ffs.tellp();
-                t_freq_list::encode(ffs,buf,lm);
+                t_freq_list::encode(ffs,buf,lm.list_len,lm.Ft);
                 pd += sizeof(uint32_t)*(lm.list_len+1);
             }
         }
@@ -163,11 +164,11 @@ struct inverted_index {
         
         bit_istream<sdsl::bit_vector> docfs(m_doc_data);
         docfs.seek(lm.doc_offset);
-        t_doc_list::decode(docfs,ld.doc_ids,lm);
+        t_doc_list::decode(docfs,ld.doc_ids,lm.list_len,m_meta_data.m_num_docs);
         
         bit_istream<sdsl::bit_vector> freqfs(m_freq_data);
         freqfs.seek(lm.freq_offset);
-        t_freq_list::decode(freqfs,ld.freqs,lm);
+        t_freq_list::decode(freqfs,ld.freqs,lm.list_len,lm.Ft);
         
         
         return ld;
