@@ -17,10 +17,10 @@ TEST(bit_stream, interp)
 {
     size_t n = 20;
     std::mt19937 gen(4711);
-    std::uniform_int_distribution<uint64_t> dis(1, 100000);
+    std::uniform_int_distribution<uint64_t> dis(0, 1000);
 
     for (size_t i = 0; i < n; i++) {
-        size_t len = dis(gen);
+        size_t len = dis(gen)*dis(gen);
         std::vector<uint32_t> A(len);
         for (size_t j = 0; j < len; j++)
             A[j] = dis(gen);
@@ -48,7 +48,7 @@ TEST(list_interp, increasing)
 {
     size_t n = 20;
     std::mt19937 gen(4711);
-    std::uniform_int_distribution<uint64_t> dis(1, 1000000);
+    std::uniform_int_distribution<uint64_t> dis(0, 1000000);
 
     for (size_t i = 0; i < n; i++) {
         size_t len = dis(gen);
@@ -74,6 +74,44 @@ TEST(list_interp, increasing)
         }
     }
 }
+
+TEST(list_interp, increasing2)
+{
+    size_t n = 20;
+    std::mt19937 gen(4711);
+    std::uniform_int_distribution<uint64_t> dis(1, 1000);
+    std::uniform_int_distribution<uint64_t> ndis(1, 100000);
+
+    for (size_t i = 0; i < n; i++) {
+        size_t len = dis(gen);
+        std::vector<uint32_t> A(len);
+        
+        for (size_t j = 0; j < len; j++) {
+            A[j] = ndis(gen)+1;
+        }
+        std::sort(A.begin(), A.end());
+        auto last = std::unique(A.begin(), A.end());
+        auto n = std::distance(A.begin(), last);
+        std::vector<uint32_t> C(A.begin(),last); 
+        sdsl::bit_vector bv;
+        {
+            bit_ostream<sdsl::bit_vector> os(bv);
+            list_interp<false>::encode(os,A,n,A[n-1]);
+        }
+        std::vector<uint32_t> B(n);
+        {
+            bit_istream<sdsl::bit_vector> is(bv);
+            list_interp<false>::decode(is,B,n,A[n-1]);
+        }
+        for (auto i = 0; i < n; i++) {
+            if(B[i]!=C[i]) {
+                std::cerr << i << "/" << n << " " << B[i] << " " << C[i] << std::endl;
+            }
+            ASSERT_EQ(B[i], C[i]);
+        }
+    }
+}
+
 
 TEST(list_interp, prefixsum)
 {
@@ -114,7 +152,7 @@ TEST(list_interp_block, increasing)
 {
     size_t n = 20;
     std::mt19937 gen(4711);
-    std::uniform_int_distribution<uint64_t> dis(1, 10000000);
+    std::uniform_int_distribution<uint64_t> dis(1, 100000);
 
     for (size_t i = 0; i < n; i++) {
         size_t len = dis(gen);
@@ -130,12 +168,49 @@ TEST(list_interp_block, increasing)
         sdsl::bit_vector bv;
         {
             bit_ostream<sdsl::bit_vector> os(bv);
-            list_interp_block<128,false>::encode(os,A,n,10000000);
+            list_interp_block<128,false>::encode(os,A,n,100000);
         }
         std::vector<uint32_t> B(n);
         {
             bit_istream<sdsl::bit_vector> is(bv);
-            list_interp_block<128,false>::decode(is,B,n,10000000);
+            list_interp_block<128,false>::decode(is,B,n,100000);
+        }
+        for (auto i = 0; i < n; i++) {
+            if(B[i]!=C[i]) {
+                std::cerr << i << "/" << n << " " << B[i] << " " << C[i] << std::endl;
+            }
+            ASSERT_EQ(B[i], C[i]);
+        }
+    }
+}
+
+TEST(list_interp_block, increasing2)
+{
+    size_t n = 2000;
+    std::mt19937 gen(4711);
+    std::uniform_int_distribution<uint64_t> dis(1, 10000);
+    std::uniform_int_distribution<uint64_t> ndis(0, 100000);
+
+    for (size_t i = 0; i < n; i++) {
+        size_t len = dis(gen);
+        std::vector<uint32_t> A(len);
+        
+        for (size_t j = 0; j < len; j++) {
+            A[j] = ndis(gen);
+        }
+        std::sort(A.begin(), A.end());
+        auto last = std::unique(A.begin(), A.end());
+        auto n = std::distance(A.begin(), last);
+        std::vector<uint32_t> C(A.begin(),last); 
+        sdsl::bit_vector bv;
+        {
+            bit_ostream<sdsl::bit_vector> os(bv);
+            list_interp_block<128,false>::encode(os,A,n,A[n-1]);
+        }
+        std::vector<uint32_t> B(n);
+        {
+            bit_istream<sdsl::bit_vector> is(bv);
+            list_interp_block<128,false>::decode(is,B,n,C[n-1]);
         }
         for (auto i = 0; i < n; i++) {
             if(B[i]!=C[i]) {
@@ -179,6 +254,41 @@ TEST(list_interp_block, prefixsum)
         }
     }
 }
+
+TEST(list_interp_block, prefixsum2)
+{
+    size_t n = 2000;
+    std::mt19937 gen(4711);
+    std::uniform_int_distribution<uint64_t> dis(1, 200000);
+    std::uniform_int_distribution<uint64_t> ndis(1, 100);
+
+    for (size_t i = 0; i < n; i++) {
+        size_t len = dis(gen);
+        std::vector<uint32_t> A(len);
+        std::vector<uint32_t> C(len);
+        size_t upper_bound = 0;
+        for (size_t j = 0; j < len; j++) {
+            A[j] = ndis(gen);
+            C[j] = A[j];
+            upper_bound += A[j];
+        }
+        auto n = len;
+        sdsl::bit_vector bv;
+        {
+            bit_ostream<sdsl::bit_vector> os(bv);
+            list_interp_block<128,true>::encode(os,A,n,upper_bound);
+        }
+        std::vector<uint32_t> B(n);
+        {
+            bit_istream<sdsl::bit_vector> is(bv);
+            list_interp_block<128,true>::decode(is,B,n,upper_bound);
+        }
+        for (size_t i = 0; i < n; i++) {
+            ASSERT_EQ(B[i], C[i]);
+        }
+    }
+}
+
 
 
 TEST(bit_stream, gamma)

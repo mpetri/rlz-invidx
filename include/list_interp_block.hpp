@@ -36,7 +36,8 @@ struct list_interp_block {
         
         // encode the content next
         static coder::interpolative interp_coder;
-        size_t prev_skip = 1;
+        size_t prev_skip = 0;
+        if(t_prefix) prev_skip++;
         for(size_t i=0;i<skips.size();i++) {
             size_t offset = i*t_block_size;
             for(size_t j=0;j<(t_block_size-1);j++) {
@@ -77,7 +78,8 @@ struct list_interp_block {
         
         // decode the content next
         static coder::interpolative interp_coder;
-        size_t prev_skip = 1;
+        size_t prev_skip = 0;
+        if(t_prefix) prev_skip++;
         for(size_t i=0;i<skips.size();i++) {
             size_t local_universe = skips[i] - prev_skip - 1;
             size_t offset = i*t_block_size;

@@ -359,4 +359,12 @@ void print_vector(std::vector<uint32_t>& buf,size_t n,std::string name) {
     std::cout << buf[n-1] << "]" << std::endl;  
 }
 
+void print_vector(const uint32_t* buf,size_t n,std::string name) {
+    std::cout << name << " [";
+    for(size_t i=0;i<n-1;i++) {
+        std::cout << buf[i] << ",";
+    }
+    std::cout << buf[n-1] << "]" << std::endl;  
+}
+
 } // end of util namespace
