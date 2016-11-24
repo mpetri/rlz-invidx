@@ -4,6 +4,8 @@
 
 #include "sdsl/int_vector_mapper.hpp"
 
+#include "meta_data.hpp"
+
 struct collection {
     std::string path;
     std::map<std::string, std::string> file_map;
@@ -40,10 +42,12 @@ struct invidx_collection : public collection {
             throw std::runtime_error("freqs file not found.");
         }
         if( !utils::file_exists(meta_file) ) {
-            throw std::runtime_error("stats file not found.");
+            throw std::runtime_error("stats file '"+meta_file+"' not found.");
         }
+        sdsl::load_from_file(m_meta_data,meta_file);
     }
     std::string docs_file;
     std::string freqs_file;
     std::string meta_file;
+    meta_data m_meta_data;
 };

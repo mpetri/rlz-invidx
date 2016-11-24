@@ -105,7 +105,7 @@ add_executable(rlzi-create.x src/rlzi-create.cpp)
 target_link_libraries(rlzi-create.x sdsl pthread divsufsort divsufsort64 zlib lz4 bzip2 brotli lzma zstd)
 
 add_executable(lzi-create.x src/lzi-create.cpp)
-target_link_libraries(lzi-create.x sdsl pthread divsufsort divsufsort64 zlib lz4 bzip2 brotli lzma zstd)
+target_link_libraries(lzi-create.x sdsl pthread divsufsort divsufsort64 zlib lz4 bzip2 brotli lzma libzstd_static)
 
 add_executable(create-invidx-collection.x src/create-invidx-collection.cpp)
 target_link_libraries(create-invidx-collection.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)
