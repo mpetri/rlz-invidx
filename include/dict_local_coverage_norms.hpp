@@ -17,7 +17,7 @@ enum ACCESS_TYPE : int {
 
 template <uint32_t t_block_size = 64,
     uint32_t t_estimator_block_size = 16,
-    uint32_t t_down_size = 256,
+    uint32_t t_down_size = 64,
     class t_norm = std::ratio<1, 2>,
     ACCESS_TYPE t_method = SEQ>
 class dict_local_coverage_norms {

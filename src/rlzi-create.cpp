@@ -37,7 +37,7 @@ int main(int argc, const char* argv[])
         auto docs_bytes = rlz_store_docs.size_in_bytes();
         auto docs_bits = docs_bytes * 8;
         LOG(INFO) << "D-RLZ-ZSTD-9 bytes = " << docs_bytes;
-        double DBPI = docs_bits / double(col.num_postings);
+        double DBPI = docs_bits / double(col.m_meta_data.m_num_postings);
         LOG(INFO) << "D-RLZ-ZSTD-9 BPI = " << DBPI;
         
         auto rlz_store_freqs = typename rlz_store<dict_local_coverage_norms<>,
@@ -52,9 +52,11 @@ int main(int argc, const char* argv[])
         auto freqs_bytes = rlz_store_freqs.size_in_bytes();
         auto freqs_bits = freqs_bytes * 8;
         LOG(INFO) << "F-ZSTD-9 bytes = " << freqs_bytes;
-        double FBPI = freqs_bits / double(col.num_postings);
+        double FBPI = freqs_bits / double(col.m_meta_data.m_num_postings);
         LOG(INFO) << "F-ZSTD-9 BPI = " << FBPI;
     }
+    
+    
     {
         auto rlz_store_docs = typename rlz_store<dict_local_coverage_norms<>,
                              factorization_blocksize,
@@ -68,7 +70,7 @@ int main(int argc, const char* argv[])
         auto docs_bytes = rlz_store_docs.size_in_bytes();
         auto docs_bits = docs_bytes * 8;
         LOG(INFO) << "D-RLZ-ZLIB-9 bytes = " << docs_bytes;
-        double DBPI = docs_bits / double(col.num_postings);
+        double DBPI = docs_bits / double(col.m_meta_data.m_num_postings);
         LOG(INFO) << "D-RLZ-ZLIB-9 BPI = " << DBPI;
         
         auto rlz_store_freqs = typename rlz_store<dict_local_coverage_norms<>,
@@ -83,10 +85,10 @@ int main(int argc, const char* argv[])
         auto freqs_bytes = rlz_store_freqs.size_in_bytes();
         auto freqs_bits = freqs_bytes * 8;
         LOG(INFO) << "F-ZLIB-9 bytes = " << freqs_bytes;
-        double FBPI = freqs_bits / double(col.num_postings);
+        double FBPI = freqs_bits / double(col.m_meta_data.m_num_postings);
         LOG(INFO) << "F-ZLIB-9 BPI = " << FBPI;
     }
-    /*
+
     {
         auto rlz_store_docs = typename rlz_store<dict_local_coverage_norms<>,
                              factorization_blocksize,
@@ -94,14 +96,14 @@ int main(int argc, const char* argv[])
                              .set_rebuild(args.rebuild)
                              .set_threads(args.threads)
                              .set_dict_size(args.dict_size_in_bytes)
-                             .build_or_load(col,col.docs_file,"D-RLZ-LZMA-6");
+                             .build_or_load(col,col.docs_file,"D-RLZ-LZMA-9");
         verify_index(col.docs_file, rlz_store_docs);
         
         auto docs_bytes = rlz_store_docs.size_in_bytes();
         auto docs_bits = docs_bytes * 8;
         LOG(INFO) << "D-RLZ-LZMA-6 bytes = " << docs_bytes;
-        double DBPI = docs_bits / double(col.num_postings);
-        LOG(INFO) << "D-RLZ-LZMA-6 BPI = " << DBPI;
+        double DBPI = docs_bits / double(col.m_meta_data.m_num_postings);
+        LOG(INFO) << "D-RLZ-LZMA-9 BPI = " << DBPI;
         
         auto rlz_store_freqs = typename rlz_store<dict_local_coverage_norms<>,
                              factorization_blocksize,
@@ -109,16 +111,14 @@ int main(int argc, const char* argv[])
                              .set_rebuild(args.rebuild)
                              .set_threads(args.threads)
                              .set_dict_size(args.dict_size_in_bytes)
-                             .build_or_load(col,col.freqs_file,"F-RLZ-LZMA-6");
+                             .build_or_load(col,col.freqs_file,"F-RLZ-LZMA-9");
         verify_index(col.freqs_file, rlz_store_freqs);
         
         auto freqs_bytes = rlz_store_freqs.size_in_bytes();
         auto freqs_bits = freqs_bytes * 8;
-        LOG(INFO) << "F-LZMA-6 bytes = " << freqs_bytes;
-        double FBPI = freqs_bits / double(col.num_postings);
-        LOG(INFO) << "F-LZMA-6 BPI = " << FBPI;
+        LOG(INFO) << "F-LZMA-9 bytes = " << freqs_bytes;
+        double FBPI = freqs_bits / double(col.m_meta_data.m_num_postings);
+        LOG(INFO) << "F-LZMA-9 BPI = " << FBPI;
     }
-    */
-
     return EXIT_SUCCESS;
 }
