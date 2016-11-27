@@ -10,6 +10,26 @@
 #include "logging.hpp"
 INITIALIZE_EASYLOGGINGPP
 
+template<uint32_t t_block_size,uint32_t t_est_size,uint32_t t_down_size,class t_ratio>
+void compress_docs(utils::cmdargs_t& args,invidx_collection& col)
+{
+    const uint32_t factorization_blocksize = 64 * 1024;
+    auto rlz_store_docs = typename rlz_store<dict_local_coverage_norms<t_block_size,t_est_size,t_down_size,t_ratio>,
+                            factorization_blocksize,
+                            factor_coder_blocked<3, coder::zstd<9>, coder::zstd<9>, coder::zstd<9> >>::builder{}
+                            .set_rebuild(args.rebuild)
+                            .set_threads(args.threads)
+                            .set_dict_size(args.dict_size_in_bytes)
+                            .build_or_load(col,col.docs_file,"D-RLZ-ZSTD-9");
+    verify_index(col.docs_file, rlz_store_docs);
+    
+    auto docs_bytes = rlz_store_docs.size_in_bytes();
+    auto docs_bits = docs_bytes * 8;
+    LOG(INFO) << "D-RLZ-ZSTD-9 bytes = " << docs_bytes;
+    double DBPI = docs_bits / double(col.m_meta_data.m_num_postings);
+    LOG(INFO) << t_block_size<<","<<t_est_size<<","<<t_down_size<<",ratio<"<<t_ratio::num<<","<<t_ratio::den<<": D-RLZ-ZSTD-9 BPI = " << DBPI;
+}
+
 int main(int argc, const char* argv[])
 {
     setup_logger(argc, argv);
@@ -23,102 +43,89 @@ int main(int argc, const char* argv[])
     invidx_collection col(args.collection_dir);
 
     /* create rlz index */
-    const uint32_t factorization_blocksize = 64 * 1024;
-    {
-        auto rlz_store_docs = typename rlz_store<dict_local_coverage_norms<>,
-                             factorization_blocksize,
-                             factor_coder_blocked<3, coder::zstd<9>, coder::zstd<9>, coder::zstd<9> >>::builder{}
-                             .set_rebuild(args.rebuild)
-                             .set_threads(args.threads)
-                             .set_dict_size(args.dict_size_in_bytes)
-                             .build_or_load(col,col.docs_file,"D-RLZ-ZSTD-9");
-        verify_index(col.docs_file, rlz_store_docs);
-        
-        auto docs_bytes = rlz_store_docs.size_in_bytes();
-        auto docs_bits = docs_bytes * 8;
-        LOG(INFO) << "D-RLZ-ZSTD-9 bytes = " << docs_bytes;
-        double DBPI = docs_bits / double(col.m_meta_data.m_num_postings);
-        LOG(INFO) << "D-RLZ-ZSTD-9 BPI = " << DBPI;
-        
-        auto rlz_store_freqs = typename rlz_store<dict_local_coverage_norms<>,
-                             factorization_blocksize,
-                             factor_coder_blocked<3, coder::zstd<9>, coder::zstd<9>, coder::zstd<9> >>::builder{}
-                             .set_rebuild(args.rebuild)
-                             .set_threads(args.threads)
-                             .set_dict_size(args.dict_size_in_bytes)
-                             .build_or_load(col,col.freqs_file,"F-RLZ-ZSTD-9");
-        verify_index(col.freqs_file, rlz_store_freqs);
-        
-        auto freqs_bytes = rlz_store_freqs.size_in_bytes();
-        auto freqs_bits = freqs_bytes * 8;
-        LOG(INFO) << "F-ZSTD-9 bytes = " << freqs_bytes;
-        double FBPI = freqs_bits / double(col.m_meta_data.m_num_postings);
-        LOG(INFO) << "F-ZSTD-9 BPI = " << FBPI;
-    }
+    compress_docs<8,4,64,std::ratio<1, 2>>(args,col);
+    compress_docs<16,4,64,std::ratio<1, 2>>(args,col);
+    compress_docs<32,4,64,std::ratio<1, 2>>(args,col);
+    compress_docs<64,4,64,std::ratio<1, 2>>(args,col);
+    compress_docs<128,4,64,std::ratio<1, 2>>(args,col);
+    compress_docs<256,4,64,std::ratio<1, 2>>(args,col);
+    compress_docs<512,4,64,std::ratio<1, 2>>(args,col);
+    compress_docs<1024,4,64,std::ratio<1, 2>>(args,col);
+    
+    compress_docs<8,8,64,std::ratio<1, 2>>(args,col);
+    compress_docs<16,8,64,std::ratio<1, 2>>(args,col);
+    compress_docs<32,8,64,std::ratio<1, 2>>(args,col);
+    compress_docs<64,8,64,std::ratio<1, 2>>(args,col);
+    compress_docs<128,8,64,std::ratio<1, 2>>(args,col);
+    compress_docs<256,8,64,std::ratio<1, 2>>(args,col);
+    compress_docs<512,8,64,std::ratio<1, 2>>(args,col);
+    compress_docs<1024,8,64,std::ratio<1, 2>>(args,col);
+    
+    compress_docs<16,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<32,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<64,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<128,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<256,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<512,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<1024,16,64,std::ratio<1, 2>>(args,col);
+    
+    compress_docs<16,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<32,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<64,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<128,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<256,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<512,16,64,std::ratio<1, 2>>(args,col);
+    compress_docs<1024,16,64,std::ratio<1, 2>>(args,col);
+    
+    compress_docs<32,32,64,std::ratio<1, 2>>(args,col);
+    compress_docs<64,32,64,std::ratio<1, 2>>(args,col);
+    compress_docs<128,32,64,std::ratio<1, 2>>(args,col);
+    compress_docs<256,32,64,std::ratio<1, 2>>(args,col);
+    compress_docs<512,32,64,std::ratio<1, 2>>(args,col);
+    compress_docs<1024,32,64,std::ratio<1, 2>>(args,col);
     
     
-    {
-        auto rlz_store_docs = typename rlz_store<dict_local_coverage_norms<>,
-                             factorization_blocksize,
-                             factor_coder_blocked<3, coder::zlib<9>, coder::zlib<9>, coder::zlib<9> >>::builder{}
-                             .set_rebuild(args.rebuild)
-                             .set_threads(args.threads)
-                             .set_dict_size(args.dict_size_in_bytes)
-                             .build_or_load(col,col.docs_file,"D-RLZ-ZLIB-9");
-        verify_index(col.docs_file, rlz_store_docs);
-        
-        auto docs_bytes = rlz_store_docs.size_in_bytes();
-        auto docs_bits = docs_bytes * 8;
-        LOG(INFO) << "D-RLZ-ZLIB-9 bytes = " << docs_bytes;
-        double DBPI = docs_bits / double(col.m_meta_data.m_num_postings);
-        LOG(INFO) << "D-RLZ-ZLIB-9 BPI = " << DBPI;
-        
-        auto rlz_store_freqs = typename rlz_store<dict_local_coverage_norms<>,
-                             factorization_blocksize,
-                             factor_coder_blocked<3, coder::zlib<9>, coder::zlib<9>, coder::zlib<9> >>::builder{}
-                             .set_rebuild(args.rebuild)
-                             .set_threads(args.threads)
-                             .set_dict_size(args.dict_size_in_bytes)
-                             .build_or_load(col,col.freqs_file,"F-RLZ-ZLIB-9");
-        verify_index(col.freqs_file, rlz_store_freqs);
-        
-        auto freqs_bytes = rlz_store_freqs.size_in_bytes();
-        auto freqs_bits = freqs_bytes * 8;
-        LOG(INFO) << "F-ZLIB-9 bytes = " << freqs_bytes;
-        double FBPI = freqs_bits / double(col.m_meta_data.m_num_postings);
-        LOG(INFO) << "F-ZLIB-9 BPI = " << FBPI;
-    }
-
-    {
-        auto rlz_store_docs = typename rlz_store<dict_local_coverage_norms<>,
-                             factorization_blocksize,
-                             factor_coder_blocked<3, coder::lzma<6>, coder::lzma<6>, coder::lzma<6> >>::builder{}
-                             .set_rebuild(args.rebuild)
-                             .set_threads(args.threads)
-                             .set_dict_size(args.dict_size_in_bytes)
-                             .build_or_load(col,col.docs_file,"D-RLZ-LZMA-9");
-        verify_index(col.docs_file, rlz_store_docs);
-        
-        auto docs_bytes = rlz_store_docs.size_in_bytes();
-        auto docs_bits = docs_bytes * 8;
-        LOG(INFO) << "D-RLZ-LZMA-6 bytes = " << docs_bytes;
-        double DBPI = docs_bits / double(col.m_meta_data.m_num_postings);
-        LOG(INFO) << "D-RLZ-LZMA-9 BPI = " << DBPI;
-        
-        auto rlz_store_freqs = typename rlz_store<dict_local_coverage_norms<>,
-                             factorization_blocksize,
-                             factor_coder_blocked<3, coder::lzma<6>, coder::lzma<6>, coder::lzma<6> >>::builder{}
-                             .set_rebuild(args.rebuild)
-                             .set_threads(args.threads)
-                             .set_dict_size(args.dict_size_in_bytes)
-                             .build_or_load(col,col.freqs_file,"F-RLZ-LZMA-9");
-        verify_index(col.freqs_file, rlz_store_freqs);
-        
-        auto freqs_bytes = rlz_store_freqs.size_in_bytes();
-        auto freqs_bits = freqs_bytes * 8;
-        LOG(INFO) << "F-LZMA-9 bytes = " << freqs_bytes;
-        double FBPI = freqs_bits / double(col.m_meta_data.m_num_postings);
-        LOG(INFO) << "F-LZMA-9 BPI = " << FBPI;
-    }
+    
+    compress_docs<8,4,64,std::ratio<1, 1>>(args,col);
+    compress_docs<16,4,64,std::ratio<1, 1>>(args,col);
+    compress_docs<32,4,64,std::ratio<1, 1>>(args,col);
+    compress_docs<64,4,64,std::ratio<1, 1>>(args,col);
+    compress_docs<128,4,64,std::ratio<1, 1>>(args,col);
+    compress_docs<256,4,64,std::ratio<1, 1>>(args,col);
+    compress_docs<512,4,64,std::ratio<1, 1>>(args,col);
+    compress_docs<1024,4,64,std::ratio<1, 1>>(args,col);
+    
+    compress_docs<8,8,64,std::ratio<1, 1>>(args,col);
+    compress_docs<16,8,64,std::ratio<1, 1>>(args,col);
+    compress_docs<32,8,64,std::ratio<1, 1>>(args,col);
+    compress_docs<64,8,64,std::ratio<1, 1>>(args,col);
+    compress_docs<128,8,64,std::ratio<1, 1>>(args,col);
+    compress_docs<256,8,64,std::ratio<1, 1>>(args,col);
+    compress_docs<512,8,64,std::ratio<1, 1>>(args,col);
+    compress_docs<1024,8,64,std::ratio<1, 1>>(args,col);
+    
+    compress_docs<16,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<32,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<64,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<128,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<256,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<512,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<1024,16,64,std::ratio<1, 1>>(args,col);
+    
+    compress_docs<16,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<32,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<64,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<128,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<256,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<512,16,64,std::ratio<1, 1>>(args,col);
+    compress_docs<1024,16,64,std::ratio<1, 1>>(args,col);
+    
+    compress_docs<32,32,64,std::ratio<1, 1>>(args,col);
+    compress_docs<64,32,64,std::ratio<1, 1>>(args,col);
+    compress_docs<128,32,64,std::ratio<1, 1>>(args,col);
+    compress_docs<256,32,64,std::ratio<1, 1>>(args,col);
+    compress_docs<512,32,64,std::ratio<1, 1>>(args,col);
+    compress_docs<1024,32,64,std::ratio<1, 1>>(args,col);
+    
     return EXIT_SUCCESS;
 }

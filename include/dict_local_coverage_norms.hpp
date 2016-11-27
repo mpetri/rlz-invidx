@@ -197,9 +197,9 @@ public:
         sdsl::int_vector<8> dict(dict_size_bytes);
         {
             size_t current = 0;
-            for(size_t i=0;i<2048;i++) {
-                dict[current++] = 1;
-            }
+            // for(size_t i=0;i<2048;i++) {
+            //     dict[current++] = 1;
+            // }
             for (const auto& pb : picked_blocks) {
                 auto itr = input.begin() + pb;
                 for(size_t i=0;i<t_block_size;i++) {
