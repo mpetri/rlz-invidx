@@ -365,7 +365,7 @@ public:
     template <class t_bit_ostream, class T>
     inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
     {
-        uint32_t bits_required = 32ULL + n * 9ULL; // upper bound
+        uint64_t bits_required = 16ULL*1024ULL + (n * sizeof(T) * 9ULL); // upper bound
         os.expand_if_needed(bits_required);
         os.align8(); // align to bytes if needed
 
@@ -377,11 +377,14 @@ public:
         uint8_t* out_buf = os.cur_data8();
         uint32_t in_size = n * sizeof(T);
 
-        uint32_t written_bytes = bits_required >> 3;
+        uint32_t written_bytes = (bits_required >> 3ULL);
         auto ret = BZ2_bzBuffToBuffCompress((char*)out_buf, &written_bytes,
             (char*)in_buf, in_size, t_level, bzip_verbose_level, bzip_work_factor);
 
         if (ret != BZ_OK) {
+            LOG(ERROR) << "n = " << n;
+            LOG(ERROR) << "bits_required = " << bits_required;
+            LOG(ERROR) << "writtne bytes = " << written_bytes;
             LOG(FATAL) << "bzip2-encode: encoding error: " << ret;
         }
 
