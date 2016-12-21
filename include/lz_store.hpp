@@ -173,7 +173,7 @@ public:
                 bmap.m_block_offsets.resize(num_blocks);
             
             const uint8_t* data_ptr = (const uint8_t*) input.data();
-            size_t blocks_per_thread = (256 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
+            size_t blocks_per_thread = (64 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
             if(blocks_per_thread == 0) blocks_per_thread = 1;
 
             size_t init_blocks = num_blocks;

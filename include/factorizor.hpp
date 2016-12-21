@@ -114,7 +114,7 @@ struct factorizor {
             bmap.m_block_factors.resize(num_blocks);
         }
 
-        const size_t blocks_per_thread = (256 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
+        const size_t blocks_per_thread = (64 * 1024 * 1024) / t_block_size; // 0.5GiB Ram used per thread
         
         auto encoded_data = sdsl::write_out_buffer<1>::create(rlz_output_file);
         bit_ostream<sdsl::int_vector_mapper<1> > encoded_stream(encoded_data);
