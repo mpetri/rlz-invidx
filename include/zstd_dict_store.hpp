@@ -64,7 +64,7 @@ public:
         
         // (2) load the block map
         LOG(INFO) << "["<<name<<"] " << "\tload block map";
-        sdsl::load_from_file( m_blockmap, col.file_name(hash,block_map_uncompressed<true>::type()) );
+        sdsl::load_from_file( m_blockmap, col.file_name(hash,name+"-"+block_map_uncompressed<true>::type()) );
 
         // (3) load dictionary from disk
         LOG(INFO) << "["<<name<<"] " << "\tload dictionary";
