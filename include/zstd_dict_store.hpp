@@ -98,7 +98,7 @@ public:
     
     size_type size_in_bytes() const
     {
-        return (m_compressed_data.size() >> 3) + m_blockmap.size_in_bytes();
+        return (m_compressed_data.size() >> 3) + m_blockmap.size_in_bytes() + m_dict.size();
     }
     
     inline uint64_t decode_block(uint64_t block_id, std::vector<uint8_t>& dat) const
