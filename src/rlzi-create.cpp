@@ -59,16 +59,15 @@ int main(int argc, const char* argv[])
 
     using dict_type = dict_local_coverage_norms<1024,8,64,std::ratio<1,2>>;
     {
-        using factor_coder = factor_coder_blocked<3, coder::zstd<9>, coder::zstd<9>, coder::zstd<9> >;
-        using idx_type = rlz_store<dict_type,block_size,factor_coder>;
-        compress<block_size,idx_type>(args,col,"RLZ-ZSTD-9");
-    }
-
-    using dict_type = dict_local_coverage_norms<1024,8,64,std::ratio<1,2>>;
-    {
         const uint64_t comp_lvl = 9;
         using idx_type = zstd_store<dict_type,block_size,comp_lvl>;
         compress<block_size,idx_type>(args,col,"ZSTD_DICT-9");
+    }
+
+    {
+        using factor_coder = factor_coder_blocked<3, coder::zstd<9>, coder::zstd<9>, coder::zstd<9> >;
+        using idx_type = rlz_store<dict_type,block_size,factor_coder>;
+        compress<block_size,idx_type>(args,col,"RLZ-ZSTD-9");
     }
 
 
