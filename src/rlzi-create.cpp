@@ -25,6 +25,7 @@ void compress(utils::cmdargs& args,invidx_collection& col,std::string name) {
     auto store_freqs = typename t_idx_type::builder{}
                    .set_rebuild(args.rebuild)
                    .set_threads(args.threads)
+                   .set_dict_size(args.dict_size_in_bytes)
                    .build_or_load(col,col.freqs_file,"F-"+name);
     verify_index(col.freqs_file, store_freqs);
 
