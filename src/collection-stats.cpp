@@ -14,6 +14,7 @@ sdsl::int_vector<32>
 compute_lcp(sdsl::int_vector<8>& text,sdsl::int_vector<64>& SA)
 {
 	//	(1) Calculate PHI (stored in array plcp)
+	LOG(INFO) << "construct PHI";
 	size_t n = SA.size();
     sdsl::int_vector<64> plcp(n);
     for (size_t i=0, sai_1 = 0; i < n; ++i) {
@@ -23,6 +24,7 @@ compute_lcp(sdsl::int_vector<8>& text,sdsl::int_vector<64>& SA)
     }
 
 	//  (2) Calculate permuted LCP array (text order), called PLCP
+	LOG(INFO) << "construct PLCP";
     size_t max_l = 0;
     for (size_t i=0, l=0; i < n-1; ++i) {
         size_t phii = plcp[i];
@@ -37,7 +39,8 @@ compute_lcp(sdsl::int_vector<8>& text,sdsl::int_vector<64>& SA)
     }
 
 	//	(3) Transform PLCP into LCP
-    sdsl::int_vector<32> LCP;
+	LOG(INFO) << "Transform PLCP to LCP";
+    sdsl::int_vector<32> LCP(n);
     LCP[0] = 0;
     for (size_t i=1; i < n; ++i) {
         size_t sai = SA[i];
@@ -53,9 +56,11 @@ compute_stats(std::string file_name,std::string name) {
 	sdsl::load_vector_from_file(T,file_name);
 	size_t n = T.size();
 	// (2) construct SA
+	LOG(INFO) << "construct SA";
 	sdsl::int_vector<64> SA(n);
 	divsufsort64((const unsigned char*)T.data(), (int64_t*)SA.data(), n);
 	// (3) construct LCP
+	LOG(INFO) << "construct LCP";
 	auto LCP = compute_lcp(T,SA);
 
 	// (4) compute LCP list
