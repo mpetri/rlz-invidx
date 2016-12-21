@@ -686,6 +686,84 @@ public:
 };
 
 
+template <uint8_t t_level = 6>
+struct zstd_dict {
+private:
+    ZSTD_CDict* cdict = nullptr;
+    ZSTD_DDict* ddict = nullptr;
+    ZSTD_CCtx* ctx = nullptr;
+    ZSTD_DCtx* dctx = nullptr;
+public:
+    zstd_dict() {
+        ctx = ZSTD_createCCtx();
+        dctx = ZSTD_createDCtx();
+    }
+
+    ~zstd_dict() {
+        ZSTD_freeCCtx(ctx);
+        ZSTD_freeDCtx(dctx);
+    }
+
+    void set_cdict(ZSTD_CDict* const cd) { cdict = cd; }
+    void set_ddict(ZSTD_DDict* const dd) { ddict = dd; }
+
+    static std::string type()
+    {
+        return "zstd_dict-" + std::to_string(t_level);
+    }
+
+    template <class t_bit_ostream, class T>
+    inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
+    {
+        uint64_t bits_required = 64ULL + n * 128ULL; // upper bound
+        os.expand_if_needed(bits_required);
+        os.align8(); // align to bytes if needed
+
+        /* space for writing the encoding size */
+        uint64_t* out_size = (uint64_t*)os.cur_data8();
+        os.skip(64);
+
+        /* encode */
+        uint8_t* out_buf = os.cur_data8();
+        uint64_t in_size = n * sizeof(T);
+
+        uint64_t out_buf_bytes = bits_required >> 3;
+        const uint8_t* in = (uint8_t*)in_buf;
+        auto cSize =  ZSTD_compress_usingCDict(ctx,out_buf,out_buf_bytes,in,in_size,cdict);
+
+        if (ZSTD_isError(cSize)) {
+            LOG(FATAL) << "zstd-encode: error compressing! " << ZSTD_getErrorName(cSize);
+        }
+        // write the len. assume it fits in 32bits
+        uint64_t written_bytes = cSize;
+        *out_size = written_bytes;
+        os.skip(written_bytes * 8); // skip over the written content
+    }
+    template <class t_bit_istream, class T>
+    inline void decode(const t_bit_istream& is, T* out_buf, size_t n) const
+    {
+        is.align8(); // align to bytes if needed
+
+        /* read the encoding size */
+        uint64_t* pin_size = (uint64_t*)is.cur_data8();
+        uint64_t in_size = *pin_size;
+        is.skip(64);
+
+        /* decode */
+        auto in_buf = is.cur_data8();
+        uint64_t out_size = n * sizeof(T);
+
+        auto src = (uint8_t*)in_buf;
+        auto out = (uint8_t*)out_buf;
+        auto dSize = ZSTD_decompress_usingDDict(dctx,out,out_size,src,in_size,ddict);
+        
+        if (dSize != out_size) {
+            LOG(FATAL) << "zstd-decode: error decoding! " << ZSTD_getErrorName(dSize);
+        }
+        is.skip(in_size * 8); // skip over the read content
+    }
+};
+
 struct interpolative {
 private:
     template <class t_bit_ostream>
