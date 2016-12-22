@@ -4,6 +4,7 @@
 #define ELPP_STL_LOGGING
 
 #include "easylogging++.h"
+#include "sdsl/util.hpp"
 
 void setup_logger(int argc, const char** argv, bool log_stdout = true)
 {

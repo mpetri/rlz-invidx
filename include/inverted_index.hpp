@@ -177,6 +177,11 @@ struct inverted_index {
         
         return ld;
     }
+
+    size_t list_len(size_type idx) const {
+        const auto& lm = m_meta_data.m_list_data[idx];
+        return lm.list_len;
+    }
     
     size_type num_lists() const {
         return m_meta_data.m_num_lists;
