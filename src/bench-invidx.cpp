@@ -101,7 +101,7 @@ void bench_invidx(std::string input_prefix,std::string collection_dir)
     while( list_ids.size() != 1000 ) {
     	auto cur_id = dis(gen);
     	auto cur_len = invidx_loaded.list_len(cur_id);
-    	if(cur_id >= 1000) {
+    	if(cur_len >= 1000) {
     		list_ids.push_back(cur_id);
             list_lens.push_back(cur_len);
     	}
