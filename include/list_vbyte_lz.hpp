@@ -32,6 +32,7 @@ struct list_vbyte_lz {
         if(tmp.size() % 32 != 0) {
             size_t add = 32 - (tmp.size()%32);
             tmp.resize(tmp.size()+add);
+            LOG(ERROR) << "encoding error!";
         }
     
         // (2) entropy encode the vbyte encoded data
