@@ -53,7 +53,7 @@ struct list_vbyte_lz {
         
         // (1) undo the entropy coder
         size_t num_u32 = in.get_int(32);
-        sdsl::bit_vector tmp(num_u32*32);
+        static sdsl::bit_vector tmp(30*1024*1024*32);
         uint32_t* vbyte_data = (uint32_t*) tmp.data();
         static t_ent_coder ent_coder;
         ent_coder.decode(in,vbyte_data,num_u32);
