@@ -190,8 +190,13 @@ int main(int argc, const char* argv[])
         bench_invidx<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     }
     {
-        using doc_list_type = list_vbyte_lz<true,128,coder::bzip2<9>>;
-        using freq_list_type = list_vbyte_lz<false,128,coder::bzip2<9>>;
+        using doc_list_type = list_u32_lz<true,128,coder::zstd<9>>;
+        using freq_list_type = list_u32_lz<false,128,coder::zstd<9>>;
+        bench_invidx<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
+    }
+    {
+        using doc_list_type = list_u32_lz<true,128,coder::lzma<6>>;
+        using freq_list_type = list_u32_lz<false,128,coder::lzma<6>>;
         bench_invidx<doc_list_type,freq_list_type>(args.input_prefix,args.collection_dir+"-"+doc_list_type::name());
     }
     return 0;
