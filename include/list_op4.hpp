@@ -17,7 +17,7 @@ struct list_op4 {
     
     static void encode(bit_ostream<sdsl::bit_vector>& out,std::vector<uint32_t>& buf,size_t n,size_t) {
         static FastPForLib::OPTPFor<t_block_size/32> optpfor_coder;
-        static coder::vbyte vcoder;
+        static coder::vbyte_fastpfor vcoder;
         if(t_dgap) utils::dgap_list(buf,n);
         out.expand_if_needed(1024ULL+40ULL*buf.size());
         out.align8();
@@ -43,7 +43,7 @@ struct list_op4 {
     
     static void decode(bit_istream<sdsl::bit_vector>& in,std::vector<uint32_t>& buf,size_t n,size_t) {
         static FastPForLib::OPTPFor<t_block_size/32> optpfor_coder;
-        static coder::vbyte vcoder;
+        static coder::vbyte_fastpfor vcoder;
         in.align8();
         const uint32_t* in32 = (const uint32_t*) in.cur_data8();
         uint32_t* out32 = buf.data();

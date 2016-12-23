@@ -14,7 +14,7 @@ struct list_vbyte_lz {
     } 
     
     static void encode(bit_ostream<sdsl::bit_vector>& out,std::vector<uint32_t>& buf,size_t n,size_t) {
-        static coder::vbyte vcoder;
+        static coder::vbyte_fastpfor vcoder;
         if(t_dgap) utils::dgap_list(buf,n);
         
         // (0) small lists remain vbyte only
@@ -43,7 +43,7 @@ struct list_vbyte_lz {
     }
     
     static void decode(bit_istream<sdsl::bit_vector>& in,std::vector<uint32_t>& buf,size_t n,size_t) {
-        static coder::vbyte vcoder;
+        static coder::vbyte_fastpfor vcoder;
         // (0) small lists remain vbyte only
         if(n <= t_thres) {
             vcoder.decode(in,buf.data(),n);

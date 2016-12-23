@@ -15,6 +15,8 @@
 
 #include "zstd.h"
 
+#include "variablebyte.h"
+
 #include <cassert>
 namespace coder {
 
@@ -98,6 +100,45 @@ struct vbyte {
             *out_buf = decode(is);
             ++out_buf;
         }
+    }
+};
+
+
+struct vbyte_fastpfor {
+    static std::string type()
+    {
+        return "vbyte";
+    }
+
+    template <class t_bit_ostream, class T>
+    inline void encode(t_bit_ostream& os, T* in_buf, size_t n) const
+    {
+        os.expand_if_needed(8*n*(1+sizeof(T)));
+        static FastPForLib::VByte vbyte_coder;
+        os.align8();
+        /* space for writing the encoding size */
+        uint32_t* out_size = (uint32_t*)os.cur_data8();
+        os.skip(32);
+
+        /* encode */
+        uint32_t* out32 = out_size; ++out32;
+        size_t written_ints = 2*n;
+        vbyte_coder.encodeArray(in_buf,n,out32,written_ints);
+        size_t bits_written = written_ints * sizeof(uint32_t)*8;
+        *out_size = (uint32_t) written_ints;
+        os.skip(bits_written);
+    }
+    template <class t_bit_istream, class T>
+    inline void decode(const t_bit_istream& is, T* out_buf, size_t ) const
+    {
+        static FastPForLib::VByte vbyte_coder;
+        is.align8();
+        uint32_t* in32 = (uint32_t*) is.cur_data8();
+        uint32_t ints_to_process = *in32; ++in32;
+        size_t read = 0;
+        auto newin32 = vbyte_coder.decodeArray(in32,ints_to_process,out_buf,read);
+        size_t processed_ints = newin32 - in32;
+        is.skip(processed_ints * sizeof(uint32_t)*8);
     }
 };
 
