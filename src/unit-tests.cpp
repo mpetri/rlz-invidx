@@ -17,7 +17,7 @@ INITIALIZE_EASYLOGGINGPP
 
 TEST(bit_stream, vbytefastpfor)
 {
-    size_t n = 20;
+    size_t n = 200;
     std::mt19937 gen(4711);
     std::uniform_int_distribution<uint64_t> dis(1, 100000);
 
@@ -29,6 +29,12 @@ TEST(bit_stream, vbytefastpfor)
         std::sort(A.begin(), A.end());
         auto last = std::unique(A.begin(), A.end());
         auto n = std::distance(A.begin(), last);
+        size_t prev = A[0];
+        for(int64_t i=1;i<n;i++) {
+            auto val = A[i] - prev;
+            prev = A[i];
+            A[i] = val;
+        }
         coder::vbyte_fastpfor c;
         sdsl::bit_vector bv;
         {
@@ -824,7 +830,7 @@ TEST(list_vbyte_lz, increasing)
 
 TEST(list_vbyte_lz, increasing2)
 {
-    size_t n = 20;
+    size_t n = 200;
     std::mt19937 gen(4711);
     std::uniform_int_distribution<uint64_t> dis(1, 1000);
     std::uniform_int_distribution<uint64_t> ndis(1, 100000);
@@ -862,7 +868,7 @@ TEST(list_vbyte_lz, increasing2)
 
 TEST(list_vbyte_lz, prefixsum)
 {
-    size_t n = 20;
+    size_t n = 200;
     std::mt19937 gen(4711);
     std::uniform_int_distribution<uint64_t> dis(1, 100000);
     std::uniform_int_distribution<uint64_t> ndis(1, 1000);

@@ -251,7 +251,7 @@ struct inverted_index {
                 for(uint32_t i=0;i<list_len;i++) {
                     uint32_t cur_id = utils::read_uint32(docs_in);
                     if(cur_list.doc_ids[i] != cur_id) {
-                        LOG(ERROR) << "doc ids not equal";
+                        LOG(ERROR) << "list="<<num_lists << " (llen="<<list_len<<") doc ids not equal i="<<i << " is: " << cur_list.doc_ids[i] << " should be: " << cur_id;
                         return false;
                     }
                 }
