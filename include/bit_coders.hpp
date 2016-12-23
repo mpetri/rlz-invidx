@@ -113,9 +113,9 @@ struct vbyte_fastpfor {
     template <class t_bit_ostream, class T>
     inline void encode(t_bit_ostream& os, T* in_buf, size_t n) const
     {
-        os.expand_if_needed(8*n*(1+sizeof(T)));
+        os.expand_if_needed(8*n*(2+sizeof(T)));
         static FastPForLib::VByte vbyte_coder;
-        os.align8();
+        os.align64();
         /* space for writing the encoding size */
         uint32_t* out_size = (uint32_t*)os.cur_data8();
         os.skip(32);
@@ -132,7 +132,7 @@ struct vbyte_fastpfor {
     inline void decode(const t_bit_istream& is, T* out_buf, size_t ) const
     {
         static FastPForLib::VByte vbyte_coder;
-        is.align8();
+        is.align64();
         uint32_t* in32 = (uint32_t*) is.cur_data8();
         uint32_t ints_to_process = *in32; ++in32;
         size_t read = 0;
