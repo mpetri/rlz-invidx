@@ -98,12 +98,15 @@ void bench_invidx(std::string input_prefix,std::string collection_dir)
     LOG(INFO) << "Picking list ids for benchmark...";
     std::vector<uint64_t> list_ids;
     std::vector<uint64_t> list_lens;
+    std::vector<uint64_t> list_encoding_size;
     while( list_ids.size() != 1000 ) {
     	auto cur_id = dis(gen);
     	auto cur_len = invidx_loaded.list_len(cur_id);
+        auto cur_list_size = invidx_loaded.list_encoding_bits(cur_id);
     	if(cur_len >= 1000) {
     		list_ids.push_back(cur_id);
             list_lens.push_back(cur_len);
+            list_encoding_size.push_back(cur_list_size);
     	}
     }
     LOG(INFO) << "Picked lists " << list_ids;
@@ -127,9 +130,10 @@ void bench_invidx(std::string input_prefix,std::string collection_dir)
     }
 
     for(size_t i=0;i<timings.size();i++) {
-        LOG(INFO) << invidx_type::type() << ";"
+        LOG(INFO) << t_doc_list::name() << ";"
                   << i << ";"
                   << list_lens[i] << ";"
+                  << list_encoding_size[i] << ";"
                   << timings[i].count();
     }
 }

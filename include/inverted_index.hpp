@@ -14,6 +14,7 @@
 #include "list_interp_block.hpp"
 #include "list_u32.hpp"
 #include "list_vbyte_lz.hpp"
+#include "list_u32_lz.hpp"
 
 #include "boost/progress.hpp"
 
@@ -181,6 +182,20 @@ struct inverted_index {
     size_t list_len(size_type idx) const {
         const auto& lm = m_meta_data.m_list_data[idx];
         return lm.list_len;
+    }
+
+    size_t list_encoding_bits(size_type idx) const {
+        const auto& lm = m_meta_data.m_list_data[idx];
+        size_t next_doc_offset = m_doc_data.size();
+        size_t next_freq_offset = m_freq_data.size();
+        if(idx+1 != m_meta_data.m_list_data.size()) {
+            const auto& lm1 = m_meta_data.m_list_data[idx+1];
+            next_doc_offset = lm1.doc_offset;
+            next_freq_offset = lm1.freq_offset;
+        }
+        size_t doc_size_bits = (next_doc_offset - lm.doc_offset);
+        size_t freq_size_bits = (next_freq_offset - lm.freq_offset);
+        return doc_size_bits+freq_size_bits;
     }
     
     size_type num_lists() const {
