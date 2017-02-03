@@ -130,6 +130,7 @@ struct inverted_index {
 				pd += sizeof(uint32_t) * (lm.list_len + 1);
 			}
 		}
+		LOG(INFO) << "done creating inverted index.";
 	}
 
 	void write(std::string collection_dir)

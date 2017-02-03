@@ -64,12 +64,13 @@ template <class t_list>
 void build_and_verify(std::string input_prefix, std::string collection_dir)
 {
 	using invidx_type = inverted_index<list_vbyte<true>, list_vbyte<false>>;
+	LOG(INFO) << "building regular inverted index (" << invidx_type::type() << ")";
 	invidx_type invidx(input_prefix);
 	bool		verify = false;
 
 	using interleaved_type = interleaved_inverted_index<t_list>;
 	if (!interleaved_index_exists(collection_dir)) {
-		LOG(INFO) << "building inverted index (" << invidx_type::type() << ")";
+		LOG(INFO) << "building inverted index (" << interleaved_type::type() << ")";
 		interleaved_type invidx(invidx);
 		LOG(INFO) << "write inverted index";
 		invidx.write(collection_dir);

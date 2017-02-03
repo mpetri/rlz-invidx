@@ -33,7 +33,8 @@ struct interleaved_inverted_index {
 	interleaved_inverted_index(const t_invidx& idx)
 	{
 		boost::progress_display pd(idx.num_lists());
-		std::vector<uint32_t>   tmp_buf(idx.num_docs() * 2);
+		LOG(INFO) << "create interleaved index from (" << idx.num_lists() "," << idx.num_docs() ")";
+		std::vector<uint32_t> tmp_buf(idx.num_docs() * 2);
 
 		m_meta_data.m_num_lists = idx.num_lists();
 		m_meta_data.m_num_docs  = idx.num_docs();
@@ -59,6 +60,7 @@ struct interleaved_inverted_index {
 			m_meta_data.m_list_data.push_back(lm);
 			++pd;
 		}
+		LOG(INFO) << "done creating inverted index.";
 	}
 
 	void write(std::string collection_dir)
