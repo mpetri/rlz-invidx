@@ -73,6 +73,7 @@ struct interleaved_inverted_index {
 	void read(std::string collection_dir)
 	{
 		std::string output_docfreqs = collection_dir + "/" + DOCFREQS_NAME;
+		std::string output_meta		= collection_dir + "/" + META_NAME;
 		sdsl::load_from_file(m_list_data, output_docfreqs);
 		sdsl::load_from_file(m_meta_data, output_meta);
 	}
