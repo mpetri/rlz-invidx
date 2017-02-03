@@ -33,7 +33,7 @@ struct interleaved_inverted_index {
 	interleaved_inverted_index(const t_invidx& idx)
 	{
 		boost::progress_display pd(idx.num_lists());
-		std::vector<uint32_t>   buf(idx.num_docs() * 2);
+		std::vector<uint32_t>   tmp_buf(idx.num_docs() * 2);
 
 		m_meta_data.m_num_lists = idx.num_lists();
 		m_meta_data.m_num_docs  = idx.num_docs();
@@ -44,35 +44,35 @@ struct interleaved_inverted_index {
 			auto cur_list = idx[i];
 
 			// create interleaved representation with docs d-gapped
-			buf[0] = cur_list.doc_ids[0];
-			buf[0] = cur_list.freqs[1];
+			tmp_buf[0] = cur_list.doc_ids[0];
+			tmp_buf[0] = cur_list.freqs[1];
 			for (size_t i = 1; i < cur_list.list_len; i++) {
 				size_t offset		= i * 2;
 				tmp_buf[offset]		= cur_list.doc_ids[i] - cur_list.doc_ids[i - 1];
-				tmp_buf[offset + 1] = ld.freqs[i];
+				tmp_buf[offset + 1] = cur_list.freqs[i];
 			}
 
 			// encode
 			lm.list_len   = cur_list.list_len;
 			lm.doc_offset = lfs.tellp();
-			t_list::encode(lfs, buf, lm.list_len * 2, m_meta_data.m_num_docs);
+			t_list::encode(lfs, tmp_buf, lm.list_len * 2, m_meta_data.m_num_docs);
 			m_meta_data.m_list_data.push_back(lm);
-			pd++;
+			++pd;
 		}
 	}
 
 	void write(std::string collection_dir)
 	{
 		utils::create_directory(collection_dir);
-		std::string output_docfreqs = collection_dir + "/" + DOCSFREQS_NAME;
+		std::string output_docfreqs = collection_dir + "/" + DOCFREQS_NAME;
 		std::string output_meta		= collection_dir + "/" + META_NAME;
-		sdsl::store_to_file(m_list_data, output_docids);
+		sdsl::store_to_file(m_list_data, output_docfreqs);
 		sdsl::store_to_file(m_meta_data, output_meta);
 	}
 
 	void read(std::string collection_dir)
 	{
-		std::string output_docfreqs = collection_dir + "/" + DOCSFREQS_NAME;
+		std::string output_docfreqs = collection_dir + "/" + DOCFREQS_NAME;
 		sdsl::load_from_file(m_list_data, output_docfreqs);
 		sdsl::load_from_file(m_meta_data, output_meta);
 	}
@@ -89,7 +89,7 @@ struct interleaved_inverted_index {
 	list_data operator[](size_type idx) const
 	{
 		list_data					 ld;
-		static std::vector<uint32_t> tmp_buf(m_num_docs * 2);
+		static std::vector<uint32_t> tmp_buf(m_meta_data.m_num_docs * 2);
 
 		const auto& lm = m_meta_data.m_list_data[idx];
 
@@ -123,7 +123,7 @@ struct interleaved_inverted_index {
 	size_t list_encoding_bits(size_type idx) const
 	{
 		const auto& lm				= m_meta_data.m_list_data[idx];
-		size_t		next_doc_offset = m_doc_data.size();
+		size_t		next_doc_offset = m_list_data.size();
 		if (idx + 1 != m_meta_data.m_list_data.size()) {
 			const auto& lm1 = m_meta_data.m_list_data[idx + 1];
 			next_doc_offset = lm1.doc_offset;
@@ -136,7 +136,7 @@ struct interleaved_inverted_index {
 
 	size_type num_docs() const { return m_meta_data.m_num_docs; }
 
-	bool operator!=(const inverted_index<t_doc_list, t_freq_list>& other)
+	bool operator!=(const interleaved_inverted_index<t_list>& other)
 	{
 		if (other.num_lists() != num_lists()) {
 			LOG(ERROR) << "num lists not equal";
