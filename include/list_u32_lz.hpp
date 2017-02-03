@@ -14,26 +14,25 @@ struct list_u32_lz {
     } 
     
     static void encode(bit_ostream<sdsl::bit_vector>& out,std::vector<uint32_t>& buf,size_t n,size_t) {
-        static coder::vbyte_fastpfor vcoder;
         if(t_dgap) utils::dgap_list(buf,n);
         
         // (0) small lists remain vbyte only
         if(n <= t_thres) {
+            static coder::vbyte_fastpfor vcoder;
             vcoder.encode(out,buf.data(),n);
             return;
         }
         
         // (1) entropy encode the u32 encoded data
-        size_t num_u32 = buf.size();
         const uint32_t* u32_data = (const uint32_t*) buf.data(); 
         static t_ent_coder ent_coder;
-        ent_coder.encode(out,u32_data,num_u32);
+        ent_coder.encode(out,u32_data,n);
     }
     
     static void decode(bit_istream<sdsl::bit_vector>& in,std::vector<uint32_t>& buf,size_t n,size_t) {
-        static coder::vbyte_fastpfor vcoder;
         // (0) small lists remain vbyte only
         if(n <= t_thres) {
+            static coder::vbyte_fastpfor vcoder;
             vcoder.decode(in,buf.data(),n);
             if(t_dgap) utils::undo_dgap_list(buf,n);
             return;

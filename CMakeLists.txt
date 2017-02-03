@@ -117,6 +117,8 @@ target_link_libraries(create-invidx.x sdsl pthread zlib lz4 bzip2 brotli lzma li
 add_executable(bench-invidx.x src/bench-invidx.cpp)
 target_link_libraries(bench-invidx.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)
 
+add_executable(list-stats.x src/list-stats.cpp)
+target_link_libraries(list-stats.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)
 
 add_executable(collection-stats.x src/collection-stats.cpp)
 target_link_libraries(collection-stats.x divsufsort64 divsufsort sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)
