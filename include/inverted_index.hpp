@@ -212,6 +212,8 @@ struct inverted_index {
 
 	size_type num_docs() const { return m_meta_data.m_num_docs; }
 
+	size_type num_postings() const { return m_meta_data.m_num_postings; }
+
 	bool operator!=(const inverted_index<t_doc_list, t_freq_list>& other)
 	{
 		if (other.num_lists() != num_lists()) {

@@ -60,29 +60,26 @@ bool interleaved_index_exists(std::string col_dir)
 	return true;
 }
 
-template <class t_list>
-void build_and_verify(std::string input_prefix, std::string collection_dir)
+template <class t_invidx,class t_list>
+void build_and_verify(const t_invidx& invidx,std::string input_prefix, std::string collection_dir)
 {
-	using invidx_type = inverted_index<list_vbyte<true>, list_vbyte<false>>;
-	LOG(INFO) << "building regular inverted index (" << invidx_type::type() << ")";
-	invidx_type invidx(input_prefix);
 	bool		verify = false;
 
 	using interleaved_type = interleaved_inverted_index<t_list>;
 	if (!interleaved_index_exists(collection_dir)) {
-		LOG(INFO) << "building inverted index (" << interleaved_type::type() << ")";
-		interleaved_type invidx(invidx);
+		LOG(INFO) << "building interleaved inverted index (" << interleaved_type::type() << ")";
+		interleaved_type iinvidx(invidx);
 		LOG(INFO) << "write inverted index";
-		invidx.write(collection_dir);
+		iinvidx.write(collection_dir);
 		verify = true;
 	}
-	LOG(INFO) << "load inverted index (" << invidx_type::type() << ")";
-	interleaved_type invidx_loaded;
-	invidx_loaded.read(collection_dir);
-	invidx_loaded.stats();
+	interleaved_type iinvidx_loaded;
+	LOG(INFO) << "load inverted index (" << interleaved_type::type() << ")";
+	iinvidx_loaded.read(collection_dir);
+	iinvidx_loaded.stats();
 	if (verify) {
 		LOG(INFO) << "verify loaded index against input data";
-		if (!invidx_loaded.verify(input_prefix)) {
+		if (!iinvidx_loaded.verify(input_prefix)) {
 			LOG(ERROR) << "Error verifying index";
 		} else {
 			LOG(INFO) << "[OK] loaded index identical to input data";
@@ -96,19 +93,23 @@ int main(int argc, const char* argv[])
 
 	cmdargs_t args = parse_args(argc, argv);
 
+	using invidx_type = inverted_index<list_vbyte<true>, list_vbyte<false>>;
+	LOG(INFO) << "building regular inverted index (" << invidx_type::type() << ")";
+	invidx_type invidx(args.input_prefix);
+
 	{
 		using list_type = list_vbyte_lz<false, 128, coder::zstd<9>>;
-		build_and_verify<list_type>(args.input_prefix,
+		build_and_verify<invidx_type,list_type>(invidx,args.input_prefix,
 									args.collection_dir + "-il-" + list_type::name());
 	}
 	{
 		using list_type = list_vbyte_lz<false, 128, coder::lzma<6>>;
-		build_and_verify<list_type>(args.input_prefix,
+		build_and_verify<invidx_type,list_type>(invidx,args.input_prefix,
 									args.collection_dir + "-il-" + list_type::name());
 	}
 	{
 		using list_type = list_vbyte_lz<false, 128, coder::bzip2<9>>;
-		build_and_verify<list_type>(args.input_prefix,
+		build_and_verify<invidx_type,list_type>(invidx,args.input_prefix,
 									args.collection_dir + "-il-" + list_type::name());
 	}
 	return 0;
