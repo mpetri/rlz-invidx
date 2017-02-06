@@ -104,9 +104,8 @@ struct vbyte {
 	}
 };
 
-
 struct vbyte_fastpfor {
-	static std::string type() { return "vbyte"; }
+	static std::string type() { return "simple16"; }
 
 	template <class t_bit_ostream, class T>
 	inline void encode(t_bit_ostream& os, T* in_buf, size_t n) const
@@ -114,30 +113,54 @@ struct vbyte_fastpfor {
 		os.expand_if_needed(8 * n * (2 + sizeof(T)));
 		static FastPForLib::VByte vbyte_coder;
 		os.align64();
-		/* space for writing the encoding size */
-		uint32_t* out_size = (uint32_t*)os.cur_data8();
-		os.skip(32);
+		size_t			in_size		  = n;
+		const uint32_t* input_ptr	 = (const uint32_t*)in_buf;
+		uint32_t*		output_ptr	= (uint32_t*)os.cur_data8();
+		size_t			bytes_written = 0;
+		while (in_size) {
+			size_t chunk_size					 = 1024 * 1024 * 1024;
+			if (in_size < chunk_size) chunk_size = in_size;
 
-		/* encode */
-		uint32_t* out32 = out_size;
-		++out32;
-		size_t written_ints = 2 * n;
-		vbyte_coder.encodeArray(in_buf, n, out32, written_ints);
-		size_t bits_written = written_ints * sizeof(uint32_t) * 8;
-		*out_size			= (uint32_t)written_ints;
-		os.skip(bits_written);
+			uint32_t* output_size = output_ptr;
+			output_ptr++;
+			bytes_written += sizeof(uint32_t);
+
+			size_t written_ints = 2 * n;
+			vbyte_coder.encodeArray(input_ptr, chunk_size, output_ptr, written_ints);
+
+			*output_size = written_ints;
+			input_ptr += chunk_size;
+			in_size -= chunk_size;
+			bytes_written += (written_ints * sizeof(uint32_t));
+			output_ptr += written_ints;
+		}
+		os.skip(bytes_written * 8ULL);
 	}
 	template <class t_bit_istream, class T>
-	inline void decode(const t_bit_istream& is, T* out_buf, size_t) const
+	inline void decode(const t_bit_istream& is, T* out_buf, size_t n) const
 	{
 		static FastPForLib::VByte vbyte_coder;
 		is.align64();
-		uint32_t* in32			  = (uint32_t*)is.cur_data8();
-		uint32_t  ints_to_process = *in32;
-		++in32;
-		size_t read			  = 0;
-		auto   newin32		  = vbyte_coder.decodeArray(in32, ints_to_process, out_buf, read);
-		size_t processed_ints = newin32 - in32;
+
+		size_t	to_decode		 = n;
+		uint32_t* input_ptr		 = (uint32_t*)is.cur_data8();
+		uint32_t* output_ptr	 = (uint32_t*)out_buf;
+		uint64_t  processed_ints = 0;
+		while (to_decode) {
+			size_t chunk_size					   = 1024 * 1024 * 1024;
+			if (to_decode < chunk_size) chunk_size = to_decode;
+
+			uint32_t encoded_size = *input_ptr;
+			input_ptr++;
+			processed_ints++;
+
+			vbyte_coder.decodeArray(input_ptr, encoded_size, output_ptr, chunk_size);
+
+			output_ptr += chunk_size;
+			to_decode -= chunk_size;
+			input_ptr += encoded_size;
+			processed_ints += encoded_size;
+		}
 		is.skip(processed_ints * sizeof(uint32_t) * 8);
 	}
 };
@@ -152,30 +175,54 @@ struct simple16 {
 		os.expand_if_needed(8 * n * (2 + sizeof(T)));
 		static FastPForLib::Simple16<0> s16coder;
 		os.align64();
-		/* space for writing the encoding size */
-		uint32_t* out_size = (uint32_t*)os.cur_data8();
-		os.skip(32);
+		size_t			in_size		  = n;
+		const uint32_t* input_ptr	 = (const uint32_t*)in_buf;
+		uint32_t*		output_ptr	= (uint32_t*)os.cur_data8();
+		size_t			bytes_written = 0;
+		while (in_size) {
+			size_t chunk_size					 = 1024 * 1024 * 1024;
+			if (in_size < chunk_size) chunk_size = in_size;
 
-		/* encode */
-		uint32_t* out32 = out_size;
-		++out32;
-		size_t written_ints = 2 * n;
-		s16coder.encodeArray(in_buf, n, out32, written_ints);
-		size_t bits_written = written_ints * sizeof(uint32_t) * 8;
-		*out_size			= (uint32_t)written_ints;
-		os.skip(bits_written);
+			uint32_t* output_size = output_ptr;
+			output_ptr++;
+			bytes_written += sizeof(uint32_t);
+
+			size_t written_ints = 2 * n;
+			s16coder.encodeArray(input_ptr, chunk_size, output_ptr, written_ints);
+
+			*output_size = written_ints;
+			input_ptr += chunk_size;
+			in_size -= chunk_size;
+			bytes_written += (written_ints * sizeof(uint32_t));
+			output_ptr += written_ints;
+		}
+		os.skip(bytes_written * 8ULL);
 	}
 	template <class t_bit_istream, class T>
 	inline void decode(const t_bit_istream& is, T* out_buf, size_t n) const
 	{
 		static FastPForLib::Simple16<0> s16coder;
 		is.align64();
-		uint32_t* in32			  = (uint32_t*)is.cur_data8();
-		uint32_t  ints_to_process = *in32;
-		++in32;
-		size_t read			  = n;
-		auto   newin32		  = s16coder.decodeArray(in32, ints_to_process, out_buf, read);
-		size_t processed_ints = newin32 - in32;
+
+		size_t	to_decode		 = n;
+		uint32_t* input_ptr		 = (uint32_t*)is.cur_data8();
+		uint32_t* output_ptr	 = (uint32_t*)out_buf;
+		uint64_t  processed_ints = 0;
+		while (to_decode) {
+			size_t chunk_size					   = 1024 * 1024 * 1024;
+			if (to_decode < chunk_size) chunk_size = to_decode;
+
+			uint32_t encoded_size = *input_ptr;
+			input_ptr++;
+			processed_ints++;
+
+			s16coder.decodeArray(input_ptr, encoded_size, output_ptr, chunk_size);
+
+			output_ptr += chunk_size;
+			to_decode -= chunk_size;
+			input_ptr += encoded_size;
+			processed_ints += encoded_size;
+		}
 		is.skip(processed_ints * sizeof(uint32_t) * 8);
 	}
 };
