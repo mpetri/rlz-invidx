@@ -476,7 +476,7 @@ public:
 
 		/* encode */
 		uint8_t* out_buf			 = os.cur_data8();
-		uint32_t in_size			 = n * sizeof(T);
+		uint64_t in_size			 = n * sizeof(T);
 		char*	input_ptr			 = (char*)in_buf;
 		char*	output_ptr			 = (char*)out_buf;
 		uint64_t total_written_bytes = 0;
@@ -501,7 +501,7 @@ public:
 			if (ret != BZ_OK) {
 				LOG(ERROR) << "n = " << chunk_size;
 				LOG(ERROR) << "bits_required = " << bits_required;
-				LOG(ERROR) << "writtne bytes = " << written_bytes;
+				LOG(ERROR) << "written bytes = " << written_bytes;
 				LOG(FATAL) << "bzip2-encode: encoding error: " << ret;
 			}
 
