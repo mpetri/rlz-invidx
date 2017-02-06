@@ -105,7 +105,7 @@ struct vbyte {
 };
 
 struct vbyte_fastpfor {
-	static std::string type() { return "simple16"; }
+	static std::string type() { return "vbyte"; }
 
 	template <class t_bit_ostream, class T>
 	inline void encode(t_bit_ostream& os, T* in_buf, size_t n) const
