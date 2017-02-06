@@ -128,3 +128,6 @@ target_link_libraries(create-interleaved.x sdsl pthread zlib lz4 bzip2 brotli lz
 
 add_executable(create-storage-index.x src/create-storage-index.cpp)
 target_link_libraries(create-storage-index.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)
+
+add_executable(create-interleaved-storage.x src/create-interleaved-storage.cpp)
+target_link_libraries(create-interleaved-storage.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)
