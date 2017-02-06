@@ -102,7 +102,7 @@ struct storage_index {
 				pd += sizeof(uint32_t) * (list_len + 1);
 			}
 
-			LOG(INFO) << "transform doc ids";
+			LOG(INFO) << "transform freqs";
 			sdsl::bit_vector transformed_data;
 			{
 				bit_ostream<sdsl::bit_vector> tfs(transformed_data);
@@ -112,7 +112,7 @@ struct storage_index {
 				tmp_buf.resize(0); // clear data
 			}
 
-			LOG(INFO) << "compress doc ids";
+			LOG(INFO) << "compress freqs";
 			{
 				bit_ostream<sdsl::bit_vector> ffs(m_freq_data);
 				ffs.expand_if_needed(file_size);
@@ -187,15 +187,18 @@ struct storage_index {
 			sdsl::bit_vector			  transformed_doc_data(1024 + m_transfromed_doc_size * 8);
 			uint8_t*					  data_ptr = (uint8_t*)transformed_doc_data.data();
 			t_compress					  decoder;
+			LOG(INFO) << "reversing doc compression";
 			decoder.decode(docfs, data_ptr, m_transfromed_doc_size);
 
 			bit_istream<sdsl::bit_vector> tfs(transformed_doc_data);
 			t_transform					  coder;
+			LOG(INFO) << "reversing doc transform";
 			coder.decode(tfs, postings_data.data(), m_num_postings);
 		}
 
 		// (2) read and verify docs
 		{
+			LOG(INFO) << "read and verify docs";
 			std::ifstream docs_in(input_docids, std::ios::binary);
 			utils::read_uint32(docs_in); // skip the 1
 			uint32_t num_docs = utils::read_uint32(docs_in);
@@ -238,15 +241,18 @@ struct storage_index {
 			sdsl::bit_vector			  transformed_freq_data(1024 + m_transfromed_freq_size * 8);
 			uint8_t*					  data_ptr = (uint8_t*)transformed_freq_data.data();
 			t_compress					  decoder;
+			LOG(INFO) << "reversing freq compression";
 			decoder.decode(freqfs, data_ptr, m_transfromed_freq_size);
 
 			bit_istream<sdsl::bit_vector> tfs(transformed_freq_data);
 			t_transform					  coder;
+			LOG(INFO) << "reversing freq transformation";
 			coder.decode(tfs, postings_data.data(), m_num_postings);
 		}
 
 		// read and verify freqs
 		{
+			LOG(INFO) << "read and verify freqs";
 			std::ifstream freqs_in(input_freqs, std::ios::binary);
 			size_t		  num_lists	= 0;
 			size_t		  num_postings = 0;
