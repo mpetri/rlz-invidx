@@ -476,7 +476,7 @@ public:
 
 		/* encode */
 		uint8_t* out_buf			 = os.cur_data8();
-		uint64_t in_size			 = n * sizeof(T);
+		uint32_t in_size			 = n * sizeof(T);
 		char*	input_ptr			 = (char*)in_buf;
 		char*	output_ptr			 = (char*)out_buf;
 		uint64_t total_written_bytes = 0;
@@ -739,8 +739,15 @@ public:
 
 template <uint8_t t_level = 6>
 struct zstd {
+private:
+	ZSTD_DStream* dstream;
+
 public:
 	static std::string type() { return "zstd-" + std::to_string(t_level); }
+
+	zstd() { dstream = ZSTD_createDStream(); }
+
+	~zstd() { ZSTD_freeDStream(dstream); }
 
 	template <class t_bit_ostream, class T>
 	inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
@@ -782,14 +789,36 @@ public:
 		/* decode */
 		auto	 in_buf   = is.cur_data8();
 		uint64_t out_size = n * sizeof(T);
+		auto	 src	  = (uint8_t*)in_buf;
+		auto	 out	  = (uint8_t*)out_buf;
 
-		auto src   = (uint8_t*)in_buf;
-		auto out   = (uint8_t*)out_buf;
-		auto dSize = ZSTD_decompress(out, out_size, src, in_size);
-
-		if (dSize != out_size) {
-			LOG(FATAL) << "zstd-decode: error decoding! " << ZSTD_getErrorName(dSize);
+		size_t const initResult = ZSTD_initDStream(dstream);
+		if (ZSTD_isError(initResult)) {
+			fprintf(stderr, "ZSTD_initDStream() error : %s \n", ZSTD_getErrorName(initResult));
+			exit(EXIT_FAILURE);
 		}
+
+		ZSTD_inBuffer input				 = {src, in_size, 0};
+		size_t		  decompressed_bytes = 0;
+		size_t		  toRead			 = initResult;
+		while (input.pos < input.size) {
+			ZSTD_outBuffer output = {out, out_size, 0};
+			/* toRead : size of next compressed block */
+			toRead = ZSTD_decompressStream(dstream, &output, &input);
+			if (ZSTD_isError(toRead)) {
+				fprintf(stderr, "ZSTD_decompressStream() error : %s \n", ZSTD_getErrorName(toRead));
+				exit(EXIT_FAILURE);
+			}
+			out += output.pos;
+			decompressed_bytes += output.pos;
+		}
+
+
+		// auto dSize = ZSTD_decompress(out, out_size, src, in_size);
+
+		// if (decompressed_bytes != out_size) {
+		// 	LOG(FATAL) << "zstd-decode: error decoding! " << ZSTD_getErrorName(dSize);
+		// }
 		is.skip(in_size * 8); // skip over the read content
 	}
 };
