@@ -61,7 +61,7 @@ struct interleaved_inverted_index {
 			lm.list_len   = cur_list.list_len;
 			lm.doc_offset = lfs.tellp();
             lm.Ft = Ft;
-			t_list::encode(lfs, tmp_buf, lm.list_len * 2, m_meta_data.m_num_docs);
+			t_list::encode(lfs, tmp_buf, lm.list_len * 2, m_meta_data.m_num_docs + Ft);
 			m_meta_data.m_list_data.push_back(lm);
 			++pd;
 		}
@@ -107,7 +107,7 @@ struct interleaved_inverted_index {
 
 		bit_istream<sdsl::bit_vector> listfs(m_list_data);
 		listfs.seek(lm.doc_offset);
-		t_list::decode(listfs, tmp_buf, lm.list_len * 2, m_meta_data.m_num_docs);
+		t_list::decode(listfs, tmp_buf, lm.list_len * 2, m_meta_data.m_num_docs + lm.Ft );
 
 		// undo the interleaving and d-gap
 		ld.doc_ids[0] = tmp_buf[0];

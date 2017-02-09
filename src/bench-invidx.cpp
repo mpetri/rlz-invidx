@@ -99,17 +99,21 @@ void bench_invidx(std::string input_prefix,std::string collection_dir)
     std::vector<uint64_t> list_ids;
     std::vector<uint64_t> list_lens;
     std::vector<uint64_t> list_encoding_size;
-    while( list_ids.size() != 1000 ) {
-    	auto cur_id = dis(gen);
-    	auto cur_len = invidx_loaded.list_len(cur_id);
-        auto cur_list_size = invidx_loaded.list_encoding_bits(cur_id);
-    	if(cur_len >= 1000) {
-    		list_ids.push_back(cur_id);
-            list_lens.push_back(cur_len);
-            list_encoding_size.push_back(cur_list_size);
-    	}
+    for(size_t i=0;i< invidx_loaded.num_lists();i++) {
+        auto cur_len = invidx_loaded.list_len(i);
+        if(cur_len > 128) {
+            list_ids.push_back(i);
+        }
     }
-    LOG(INFO) << "Picked lists " << list_ids;
+    std::shuffle(list_ids.begin(),list_ids.end(),gen);
+    //if(list_ids.size() > 100000) list_ids.resize(10000);
+    for(size_t i=0;i<list_ids.size();i++) {
+        auto cur_id = list_ids[i];
+        auto cur_len = invidx_loaded.list_len(cur_id);
+        auto cur_list_size = invidx_loaded.list_encoding_bits(cur_id);
+        list_lens.push_back(cur_len);
+        list_encoding_size.push_back(cur_list_size);
+    }
 
     LOG(INFO) << "Perform 10 runs and take fastest";
     std::vector<std::chrono::nanoseconds> timings;
