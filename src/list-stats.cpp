@@ -9,6 +9,7 @@ INITIALIZE_EASYLOGGINGPP
 #include "inverted_index.hpp"
 
 #include <chrono>
+#include <unordered_set>
 
 typedef struct cmdargs {
   std::string collection_dir;
@@ -87,10 +88,24 @@ void bench_invidx(std::string input_prefix, std::string collection_dir) {
     }
   }
 
-  for (size_t i = 0; i < invidx_loaded.num_lists(); i++) {
-    auto cur_len = invidx_loaded.list_len(i);
-    std::cout << cur_len << std::endl;
+  std::mt19937 gen(4711);
+  std::uniform_int_distribution<uint64_t> dis(0, invidx_loaded.num_lists());
+  std::cout << 100000 << std::endl;
+  std::unordered_set<uint32_t> picked_ids;
+  for(size_t i=0;i<1000000000;i++) {
+    if( picked_ids.size() == 100000) break;
+    auto pos = dis(gen);
+    auto lst = invidx_loaded[pos];
+    if( lst.list_len <= 128) continue;
+    if( picked_ids.count(pos) != 0) continue;
+    picked_ids.insert(pos);
+    std::cout << lst.list_len << std::endl;
+    std::cout << lst.doc_ids[0] << std::endl;
+    for(size_t j=1;j<lst.list_len;j++) {
+        std::cout << lst.doc_ids[j] - lst.doc_ids[j-1] << std::endl;
+    }
   }
+  std::cerr << "found " << picked_ids.size() << " lists";
 }
 
 int main(int argc, const char *argv[]) {

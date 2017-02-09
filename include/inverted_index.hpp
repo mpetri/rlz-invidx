@@ -23,6 +23,12 @@ struct list_data {
 	std::vector<uint32_t> doc_ids;
 	std::vector<uint32_t> freqs;
 
+	list_data(size_t n)
+	{
+		doc_ids.resize(n + 1024);
+		freqs.resize(n + 1024);
+	}
+
 	bool operator!=(const list_data& other) const
 	{
 		if (list_len != other.list_len) {
@@ -165,15 +171,15 @@ struct inverted_index {
 				  << double(m_freq_data.size()) / double(m_meta_data.m_num_postings);
 	}
 
-	list_data operator[](size_type idx) const
+	list_data& operator[](size_type idx) const
 	{
-		list_data ld;
+		static list_data ld(m_meta_data.m_num_docs);
 
 		const auto& lm = m_meta_data.m_list_data[idx];
 
 		ld.list_len = lm.list_len;
-		ld.doc_ids.resize(ld.list_len + 1024); // overhead needed for FastPFor methods
-		ld.freqs.resize(ld.list_len + 1024);   // overhead needed for FastPFor methods
+		// ld.doc_ids.resize(ld.list_len + 1024); // overhead needed for FastPFor methods
+		// ld.freqs.resize(ld.list_len + 1024);   // overhead needed for FastPFor methods
 
 		bit_istream<sdsl::bit_vector> docfs(m_doc_data);
 		docfs.seek(lm.doc_offset);

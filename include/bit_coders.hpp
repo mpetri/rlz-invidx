@@ -1,12 +1,13 @@
 #pragma once
 
-#include "sdsl/int_vector.hpp"
 #include "bit_streams.hpp"
-#include "zlib.h"
-#include "lz4hc.h"
-#include "lz4.h"
 #include "bzlib.h"
+#include "lz4.h"
+#include "lz4hc.h"
 #include "lzma.h"
+#include "sdsl/int_vector.hpp"
+#include "zlib.h"
+
 // brotli
 #include "decode.h"
 #include "encode.h"
@@ -15,8 +16,8 @@
 
 #include "zstd.h"
 
-#include "variablebyte.h"
 #include "simple16.h"
+#include "variablebyte.h"
 
 #include <cassert>
 namespace coder {
@@ -165,7 +166,6 @@ struct vbyte_fastpfor {
 	}
 };
 
-
 struct simple16 {
 	static std::string type() { return "simple16"; }
 
@@ -226,7 +226,6 @@ struct simple16 {
 		is.skip(processed_ints * sizeof(uint32_t) * 8);
 	}
 };
-
 
 template <uint8_t t_width>
 struct fixed {
@@ -308,7 +307,7 @@ public:
 	template <class t_bit_ostream, class T>
 	inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
 	{
-		uint64_t bits_required = 32 + n * 128; // upper bound
+		uint64_t bits_required = 10000ULL + n * sizeof(T) * 8ULL; // upper bound
 		os.expand_if_needed(bits_required);
 		os.align8(); // align to bytes if needed
 
@@ -331,10 +330,10 @@ public:
 		deflateReset(&dstrm); // after finish we have to reset
 
 		/* If the parameter flush is set to Z_FINISH, pending input
-         is processed, pending output is flushed and deflate returns
-         with Z_STREAM_END if there was enough output space; if
-         deflate returns with Z_OK, this function must be called
-         again with Z_FINISH and more output spac */
+is processed, pending output is flushed and deflate returns
+with Z_STREAM_END if there was enough output space; if
+deflate returns with Z_OK, this function must be called
+again with Z_FINISH and more output spac */
 		if (error != Z_STREAM_END) {
 			switch (error) {
 				case Z_MEM_ERROR:
@@ -440,7 +439,8 @@ public:
 		(LZ4_streamHC_t*)lz4_state, (const char*)in_buf, out_buf, in_size, bits_required >> 3);
 		os.skip(bytes_written * 8);
 		// } else {
-		//     auto bytes_written = LZ4_compress_HC_extStateHC(lz4_state,(const char*)in_buf,out_buf,in_size,bits_required >> 3,t_level);
+		//     auto bytes_written = LZ4_compress_HC_extStateHC(lz4_state,(const
+		//     char*)in_buf,out_buf,in_size,bits_required >> 3,t_level);
 		//     os.skip(bytes_written * 8); // skip over the written content
 		// }
 	}
@@ -476,7 +476,7 @@ public:
 
 		/* encode */
 		uint8_t* out_buf			 = os.cur_data8();
-		uint32_t in_size			 = n * sizeof(T);
+		uint64_t in_size			 = n * sizeof(T);
 		char*	input_ptr			 = (char*)in_buf;
 		char*	output_ptr			 = (char*)out_buf;
 		uint64_t total_written_bytes = 0;
@@ -496,7 +496,6 @@ public:
 												t_level,
 												bzip_verbose_level,
 												bzip_work_factor);
-
 
 			if (ret != BZ_OK) {
 				LOG(ERROR) << "n = " << chunk_size;
@@ -526,7 +525,7 @@ public:
 			uint32_t  cur_in_size	= *cur_input_size;
 			in_buf += sizeof(uint32_t);
 			data_processed += cur_in_size + sizeof(uint32_t);
-			uint32_t out_size = n * sizeof(T);
+			uint32_t out_size = 2ULL * 1024ULL * 1024ULL * 1024ULL;
 			auto	 ret	  = BZ2_bzBuffToBuffDecompress(
 			out_ptr, &out_size, in_buf, cur_in_size, bzip_use_small_mem, bzip_verbose_level);
 			if (ret != BZ_OK) {
@@ -539,7 +538,6 @@ public:
 		is.skip(data_processed * 8); // skip over the read content
 	}
 };
-
 
 template <uint8_t t_level = 6>
 struct brotlih {
@@ -560,7 +558,7 @@ public:
 	template <class t_bit_ostream, class T>
 	inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
 	{
-		uint64_t bits_required = 32 + n * 128; // upper bound
+		uint64_t bits_required = 32 * 1024ULL + n * sizeof(T) * 8; // upper bound
 		os.expand_if_needed(bits_required);
 		os.align8(); // align to bytes if needed
 
@@ -577,7 +575,6 @@ public:
 
 		auto ret =
 		brotli::BrotliCompressBuffer(brotli_params, in_size, in_u8, &out_buf_bytes, out_buf);
-
 
 		if (ret != 1) {
 			LOG(FATAL) << "brotli-encode: error occured!";
@@ -619,7 +616,6 @@ public:
 	}
 };
 
-
 template <uint8_t t_level = 3>
 struct lzma {
 public:
@@ -648,7 +644,7 @@ public:
 	template <class t_bit_ostream, class T>
 	inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
 	{
-		uint64_t bits_required = 2048ULL + n * 256ULL; // upper bound
+		uint64_t bits_required = 10000ULL + n * sizeof(T) * 8ULL; // upper bound
 		os.expand_if_needed(bits_required);
 		os.align8(); // align to bytes if needed
 
@@ -736,7 +732,6 @@ public:
 	}
 };
 
-
 template <uint8_t t_level = 6>
 struct zstd {
 private:
@@ -749,10 +744,11 @@ public:
 
 	~zstd() { ZSTD_freeDStream(dstream); }
 
+
 	template <class t_bit_ostream, class T>
 	inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
 	{
-		uint64_t bits_required = 64ULL + n * 128ULL; // upper bound
+		uint64_t bits_required = 8ULL * 1024ULL * 1024ULL + n * sizeof(T) * 8ULL; // upper bound
 		os.expand_if_needed(bits_required);
 		os.align8(); // align to bytes if needed
 
@@ -823,7 +819,6 @@ public:
 	}
 };
 
-
 template <uint8_t t_level = 6>
 struct zstd_dict {
 private:
@@ -853,7 +848,7 @@ public:
 	template <class t_bit_ostream, class T>
 	inline void encode(t_bit_ostream& os, const T* in_buf, size_t n) const
 	{
-		uint64_t bits_required = 64ULL + n * 128ULL; // upper bound
+		uint64_t bits_required = 10000ULL + n * sizeof(T) * 8ULL; // upper bound
 		os.expand_if_needed(bits_required);
 		os.align8(); // align to bytes if needed
 
@@ -978,7 +973,6 @@ public:
 		return bns.tellp();
 	}
 
-
 	template <class t_bit_ostream, class T>
 	inline void encode(t_bit_ostream& os, T* in_buf, size_t n, size_t u) const
 	{
@@ -996,7 +990,6 @@ public:
 		decode_interpolative(is, out_buf, n, low, high);
 	}
 };
-
 
 struct elias_fano {
 public:

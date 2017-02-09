@@ -19,7 +19,8 @@ struct list_op4 {
         static FastPForLib::OPTPFor<t_block_size/32> optpfor_coder;
         static coder::vbyte_fastpfor vcoder;
         if(t_dgap) utils::dgap_list(buf,n);
-        out.expand_if_needed(1024ULL+40ULL*buf.size());
+        size_t bits_needed = 1024ULL+40ULL*buf.size();
+        out.expand_if_needed(bits_needed);
         out.align8();
         
         const uint32_t* in = buf.data();
@@ -36,6 +37,11 @@ struct list_op4 {
                 optpfor_coder.encodeBlock(cur_in,out32,written_ints);
                 out32 += written_ints;
                 size_t bits_written = written_ints * sizeof(uint32_t)*8;
+                if(bits_written > bits_needed) {
+                    std::cerr << "ERROR! bits_needed(" <<bits_needed 
+                              << ") bits_written(" <<bits_written 
+                              <<")" <<std::endl;
+                }
                 out.skip(bits_written);
             }
         }
