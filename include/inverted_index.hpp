@@ -16,6 +16,7 @@
 #include "list_vbyte_lz.hpp"
 #include "list_u32_lz.hpp"
 #include "list_s16_lz.hpp"
+#include "list_s16_vblz.hpp"
 
 #include "boost/progress.hpp"
 
@@ -290,9 +291,9 @@ struct inverted_index {
 			std::ifstream freqs_in(input_freqs, std::ios::binary);
 			size_t		  num_lists = 0;
 			while (!freqs_in.eof()) {
-				auto&  lm			 = m_meta_data.m_list_data[num_lists];
-				const auto&   cur_list		 = (*this)[num_lists];
-				size_t freq_list_len = utils::read_uint32(freqs_in);
+				auto&		lm			  = m_meta_data.m_list_data[num_lists];
+				const auto& cur_list	  = (*this)[num_lists];
+				size_t		freq_list_len = utils::read_uint32(freqs_in);
 				if (freq_list_len != lm.list_len) {
 					LOG(ERROR) << "freq list len not equal";
 					return false;
