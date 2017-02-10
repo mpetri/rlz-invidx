@@ -104,7 +104,7 @@ void bench_invidx(std::string input_prefix, std::string collection_dir)
 		}
 	}
 	std::shuffle(list_ids.begin(), list_ids.end(), gen);
-	/ if (list_ids.size() > 10000) list_ids.resize(1000);
+	if (list_ids.size() > 1000000) list_ids.resize(1000000);
 	for (size_t i = 0; i < list_ids.size(); i++) {
 		auto cur_id		   = list_ids[i];
 		auto cur_len	   = invidx_loaded.list_len(cur_id);
@@ -115,11 +115,13 @@ void bench_invidx(std::string input_prefix, std::string collection_dir)
 
 	LOG(INFO) << "Perform 3 runs and take fastest";
 	std::vector<std::chrono::nanoseconds> timings;
+    size_t checksum = 0;
 	for (size_t j = 0; j < 3; j++) {
 		for (size_t i = 0; i < list_ids.size(); i++) {
 			auto start = timer::now();
-			auto list  = invidx_loaded[list_ids[i]];
+			const auto& list  = invidx_loaded[list_ids[i]];
 			auto stop  = timer::now();
+            checksum += list.list_len;
 
 			if (timings.size() <= i) {
 				timings.push_back(stop - start);
@@ -130,6 +132,7 @@ void bench_invidx(std::string input_prefix, std::string collection_dir)
 			}
 		}
 	}
+    LOG(INFO) << "Checksum = " << checksum;
 
 	for (size_t i = 0; i < timings.size(); i++) {
 		LOG(INFO) << t_doc_list::name() << ";" << i << ";" << list_lens[i] << ";"
@@ -193,12 +196,12 @@ int main(int argc, const char* argv[])
 		bench_invidx<doc_list_type, freq_list_type>(
 		args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
 	}
-	// {
-	// 	using doc_list_type  = list_vbyte_lz<true, 128, coder::lzma<6>>;
-	// 	using freq_list_type = list_vbyte_lz<false, 128, coder::lzma<6>>;
-	// 	bench_invidx<doc_list_type, freq_list_type>(
-	// 	args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
-	// }
+	{
+	 	using doc_list_type  = list_s16_lz<true, 128, coder::zstd<9>>;
+	 	using freq_list_type = list_s16_lz<false, 128, coder::zstd<9>>;
+	 	bench_invidx<doc_list_type, freq_list_type>(
+	 	args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
+	}
 	{
 		using doc_list_type  = list_u32_lz<true, 128, coder::zstd<9>>;
 		using freq_list_type = list_u32_lz<false, 128, coder::zstd<9>>;

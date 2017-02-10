@@ -267,7 +267,7 @@ struct inverted_index {
 					LOG(ERROR) << "list lens not equal";
 					return false;
 				}
-				auto cur_list = (*this)[num_lists];
+				const auto& cur_list = (*this)[num_lists];
 
 				for (uint32_t i = 0; i < list_len; i++) {
 					uint32_t cur_id = utils::read_uint32(docs_in);
@@ -291,7 +291,7 @@ struct inverted_index {
 			size_t		  num_lists = 0;
 			while (!freqs_in.eof()) {
 				auto&  lm			 = m_meta_data.m_list_data[num_lists];
-				auto   cur_list		 = (*this)[num_lists];
+				const auto&   cur_list		 = (*this)[num_lists];
 				size_t freq_list_len = utils::read_uint32(freqs_in);
 				if (freq_list_len != lm.list_len) {
 					LOG(ERROR) << "freq list len not equal";
