@@ -10,6 +10,8 @@
 #include "list_interp.hpp"
 #include "list_interp_block.hpp"
 #include "list_vbyte_lz.hpp"
+#include "list_op4.hpp"
+#include "list_qmx.hpp"
 
 #include "logging.hpp"
 INITIALIZE_EASYLOGGINGPP
@@ -108,6 +110,7 @@ TEST(bit_stream, simple16)
 	test_compressor_u8_as_32<coder::simple16>();
 	test_compressor_u32<coder::simple16>();
 }
+
 
 TEST(bit_stream, vbytefastpfor)
 {
@@ -590,6 +593,81 @@ TEST(bit_stream, zstd)
 	test_compressor_u32<coder::zstd<9>>();
 	test_compressor_u32<coder::zstd<6>>();
 }
+
+template <class t_list>
+void test_list_increasing()
+{
+	size_t									n = 20;
+	std::mt19937							gen(4711);
+	std::uniform_int_distribution<uint64_t> dis(1, 1000000);
+
+	for (size_t i = 0; i < n; i++) {
+		size_t				  len = dis(gen);
+		std::vector<uint32_t> A(len + 1024);
+		for (size_t j = 0; j < len; j++)
+			A[j]	  = dis(gen);
+		std::sort(A.begin(), A.begin() + len);
+		auto				  last	 = std::unique(A.begin(), A.begin() + len);
+		auto				  list_len = std::distance(A.begin(), last);
+		std::vector<uint32_t> C(A.begin(), last);
+		sdsl::bit_vector	  bv;
+		{
+			bit_ostream<sdsl::bit_vector> os(bv);
+			t_list::encode(os, A, list_len, 1000000);
+		}
+		std::vector<uint32_t> B(list_len + 1024);
+		{
+			bit_istream<sdsl::bit_vector> is(bv);
+			t_list::decode(is, B, list_len, 1000000);
+		}
+		for (auto i = 0; i < list_len; i++) {
+			ASSERT_EQ(B[i], C[i]);
+		}
+	}
+}
+
+
+template <class t_list>
+void test_list_unordered()
+{
+	size_t									n = 20;
+	std::mt19937							gen(4711);
+	std::uniform_int_distribution<uint64_t> ldis(10, 1000000);
+	std::uniform_int_distribution<uint64_t> dis(1, 16);
+
+	for (size_t i = 0; i < n; i++) {
+		size_t				  len = ldis(gen);
+		std::vector<uint32_t> A(len + 1024);
+		size_t				  sum = 0;
+		for (size_t j = 0; j < len; j++) {
+			A[j] = dis(gen);
+			sum += A[j];
+		}
+		std::vector<uint32_t> C(A.begin(), A.begin() + len);
+		sdsl::bit_vector	  bv;
+		{
+			bit_ostream<sdsl::bit_vector> os(bv);
+			t_list::encode(os, A, len, sum);
+		}
+		std::vector<uint32_t> B(len + 1024);
+		{
+			bit_istream<sdsl::bit_vector> is(bv);
+			t_list::decode(is, B, len, sum);
+		}
+		for (auto i = 0ULL; i < len; i++) {
+			ASSERT_EQ(B[i], C[i]);
+		}
+	}
+}
+
+TEST(list_op4, increasing) { test_list_increasing<list_op4<128, true>>(); }
+
+TEST(list_op4, unordered) { test_list_unordered<list_op4<128, false>>(); }
+
+TEST(list_qmx, increasing) { test_list_increasing<list_qmx<true>>(); }
+
+TEST(list_qmx, unordered) { test_list_unordered<list_qmx<false>>(); }
+
 
 TEST(list_vbyte_lz, increasing)
 {

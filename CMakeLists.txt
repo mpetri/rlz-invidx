@@ -57,6 +57,8 @@ endif()
 
 add_subdirectory(external/zstd/build/cmake/)
 
+add_library(qmx ${CMAKE_CURRENT_SOURCE_DIR}/external/qmx/compress_qmx.cpp)
+
 # liblzma
 include(ExternalProject)
 ExternalProject_Add(
@@ -85,6 +87,7 @@ include_directories("${PROJECT_SOURCE_DIR}/external/googletest/include"
                      ${CMAKE_HOME_DIRECTORY}/external/mongoose/
                      ${CMAKE_HOME_DIRECTORY}/external/zstd/lib/
                      ${CMAKE_HOME_DIRECTORY}/external/FastPFor/headers/
+                     ${CMAKE_HOME_DIRECTORY}/external/qmx/
                     )
 
 link_directories(${CMAKE_BINARY_DIR}/external/liblzma/lib/ ${CMAKE_BINARY_DIR}/external/zstd/build/cmake/lib/)
@@ -109,13 +112,13 @@ add_executable(lzi-create.x src/lzi-create.cpp)
 target_link_libraries(lzi-create.x sdsl pthread divsufsort divsufsort64 zlib lz4 bzip2 brotli lzma libzstd_static)
 
 add_executable(unit-tests.x src/unit-tests.cpp)
-target_link_libraries(unit-tests.x sdsl pthread zlib gtest_main lz4 bzip2 brotli lzma zstd)
+target_link_libraries(unit-tests.x sdsl pthread zlib gtest_main lz4 bzip2 brotli lzma zstd qmx FastPFor)
 
 add_executable(create-invidx.x src/create-invidx.cpp)
 target_link_libraries(create-invidx.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)
 
 add_executable(bench-invidx.x src/bench-invidx.cpp)
-target_link_libraries(bench-invidx.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)
+target_link_libraries(bench-invidx.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static qmx FastPFor)
 
 add_executable(list-stats.x src/list-stats.cpp)
 target_link_libraries(list-stats.x sdsl pthread zlib lz4 bzip2 brotli lzma libzstd_static FastPFor)

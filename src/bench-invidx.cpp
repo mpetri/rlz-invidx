@@ -147,7 +147,12 @@ int main(int argc, const char* argv[])
 	cmdargs_t args = parse_args(argc, argv);
 
 	LOG(INFO) << "method;id;postings;space_bits;time_ns";
-
+	{
+		using doc_list_type  = list_qmx<true>;
+		using freq_list_type = list_qmx<false>;
+		bench_invidx<doc_list_type, freq_list_type>(
+		args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
+	}
 	{
 		using doc_list_type  = list_vbyte<true>;
 		using freq_list_type = list_vbyte<false>;
@@ -196,7 +201,7 @@ int main(int argc, const char* argv[])
 		bench_invidx<doc_list_type, freq_list_type>(
 		args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
 	}
-    /*
+	/*
     {
 		using doc_list_type  = list_s16_vblz<true, 128, coder::zstd<9>>;
 		using freq_list_type = list_s16_vblz<false, 128, coder::zstd<9>>;

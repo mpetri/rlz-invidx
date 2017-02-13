@@ -17,6 +17,7 @@
 #include "list_u32_lz.hpp"
 #include "list_s16_lz.hpp"
 #include "list_s16_vblz.hpp"
+#include "list_qmx.hpp"
 
 #include "boost/progress.hpp"
 
