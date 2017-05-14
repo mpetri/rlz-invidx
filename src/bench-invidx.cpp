@@ -201,37 +201,6 @@ int main(int argc, const char* argv[])
 		bench_invidx<doc_list_type, freq_list_type>(
 		args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
 	}
-	/*
-    {
-		using doc_list_type  = list_s16_vblz<true, 128, coder::zstd<9>>;
-		using freq_list_type = list_s16_vblz<false, 128, coder::zstd<9>>;
-		bench_invidx<doc_list_type, freq_list_type>(
-		args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
-	}
-	{
-		using doc_list_type  = list_s16_vblz<true, 256, coder::zstd<9>>;
-		using freq_list_type = list_s16_vblz<false, 256, coder::zstd<9>>;
-		bench_invidx<doc_list_type, freq_list_type>(
-		args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
-	}
-	{
-		using doc_list_type  = list_s16_vblz<true, 512, coder::zstd<9>>;
-		using freq_list_type = list_s16_vblz<false, 512, coder::zstd<9>>;
-		bench_invidx<doc_list_type, freq_list_type>(
-		args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
-	}
-	{
-		using doc_list_type  = list_s16_vblz<true, 1024, coder::zstd<9>>;
-		using freq_list_type = list_s16_vblz<false, 1024, coder::zstd<9>>;
-		bench_invidx<doc_list_type, freq_list_type>(
-		args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
-	}
-	{
-		using doc_list_type  = list_s16_vblz<true, 2048, coder::zstd<9>>;
-		using freq_list_type = list_s16_vblz<false, 2048, coder::zstd<9>>;
-		bench_invidx<doc_list_type, freq_list_type>(
-		args.input_prefix, args.collection_dir + "-" + doc_list_type::name());
-	}*/
 	{
 		using doc_list_type  = list_u32_lz<true, 128, coder::zstd<9>>;
 		using freq_list_type = list_u32_lz<false, 128, coder::zstd<9>>;
